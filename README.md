@@ -11,6 +11,11 @@ EffectCraft 的 4 个效果，合并成一个套件，并分成两个效果栏�
 
 三个 wasm 插件各有中文、英文两份构建；灯光混合是外部助手，同一份 exe 按 `mos-suite.json` 的 `effectsLanguage` 显示中文或英文。
 
+| 中文界面 | English UI |
+| --- | --- |
+| ![中文安装器](docs/screenshots/setup-zh.png) | ![English installer](docs/screenshots/setup-en.png) |
+| ![安装完成](docs/screenshots/setup-done.png) | ![已安装](docs/screenshots/setup-installed-zh.png) |
+
 ## 目录
 
 ```
@@ -64,7 +69,7 @@ MOS-Suite-Setup-1.0.0.exe /S /uninstall
 
 ## 许可
 
-MIT，见 `LICENSE`。灯光混合是对 Digital Anarchy Light Wrap Fantastic 的独立重实现，不含对方代码或素材；发布时不要附带 `_ref` 里的参考文档。
+MIT，见 `LICENSE`。灯光混合是 Light Wrap 类效果的独立实现（灵感来自 Digital Anarchy Light Wrap Fantastic），不含第三方代码或素材，与该产品及其公司无隶属关系；发布时不要附带 `_ref` 里的参考文档。
 
 ---
 
@@ -76,4 +81,4 @@ Build with `node <plugin>/build.js` for the wasm plugins, `cargo build --release
 
 Install by running the installer or following `docs/en/Install-Guide.md`. Silent install: `/S /lang=en /effects=en /dir="..."`, `/S /uninstall`; log in `%TEMP%\mos-suite-setup.log`.
 
-MIT licensed, see `LICENSE`. Light Mix is an independent re-implementation of Digital Anarchy Light Wrap Fantastic and contains none of their code or assets.
+MIT licensed, see `LICENSE`. Light Mix is an independent Light Wrap style effect inspired by Digital Anarchy Light Wrap Fantastic; it contains no third-party code or assets and is not affiliated with that company. Do not publish the reference documents in `_ref`.
