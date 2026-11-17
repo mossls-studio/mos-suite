@@ -2,12 +2,22 @@
 
 EffectCraft 的 4 个效果，合并成一个套件，并分成两个效果栏分组：
 
-| 分组 Group | 效果 Effect | ID | 版本 Version |
-| --- | --- | --- | --- |
-| MOS 形变 / MOS Deform | 抖动 Shake | `mos.shake` | 1.2.0 |
-| MOS 形变 / MOS Deform | 收缩 Shrink | `mos.shrink` | 1.3.7 |
-| MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | 0.6.2 |
-| MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 1.5.0 |
+| 分组 Group | 效果 Effect | ID | 版本 Version | 源码 Source |
+| --- | --- | --- | --- | --- |
+| MOS 形变 / MOS Deform | 抖动 Shake | `mos.shake` | 1.2.0 | <https://github.com/mossls-studio/mos-shake> |
+| MOS 形变 / MOS Deform | 收缩 Shrink | `mos.shrink` | 1.3.7 | <https://github.com/mossls-studio/mos-shrink> |
+| MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | 0.6.2 | <https://github.com/mossls-studio/mos-shadow> |
+| MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 1.5.0 | <https://github.com/mossls-studio/mos-lightmix> |
+
+开源地址（AGPL-3.0-or-later，各自独立仓库，安装器与说明在套件仓库）：
+
+| 仓库 Repository | 内容 Contents |
+| --- | --- |
+| <https://github.com/mossls-studio/mos-suite> | 套件：Material 3 安装器源码、双语安装说明、发布产物 |
+| <https://github.com/mossls-studio/mos-shadow> | 阴影 `mos.shadow`（wasm，api 2，含源码 `src/mos_shadow.wat` 与构建脚本） |
+| <https://github.com/mossls-studio/mos-shake> | 抖动 `mos.shake`（wasm，api 1） |
+| <https://github.com/mossls-studio/mos-shrink> | 收缩 `mos.shrink`（wasm，api 1） |
+| <https://github.com/mossls-studio/mos-lightmix> | 灯光混合 `mos.lightwrap`（Rust 外部助手，含 `helper/src/*.rs`） |
 
 三个 wasm 插件各有 4 份构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`）；灯光混合是外部助手，同一份 exe 按 `mos-suite.json` 里的设置分别决定分组/效果名和参数名的语言。
 
@@ -81,7 +91,7 @@ AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本）�
 
 # MOS Suite (English)
 
-Four EffectCraft effects, shipped as one suite in two Effects-panel groups (table above). The three wasm plugins are built in four name×parameter combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`); Light Mix is a single external helper exe that localizes its names and parameter labels from the two settings in `mos-suite.json`.
+Four EffectCraft effects, shipped as one suite in two Effects-panel groups (table above). Each effect has its own AGPL-3.0-or-later repository: [mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-shadow](https://github.com/mossls-studio/mos-shadow), [mos-lightmix](https://github.com/mossls-studio/mos-lightmix); the installer and guides live in [mos-suite](https://github.com/mossls-studio/mos-suite). The three wasm plugins are built in four name×parameter combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`); Light Mix is a single external helper exe that localizes its names and parameter labels from the two settings in `mos-suite.json`.
 
 Build with `node <plugin>/build.js` for the wasm plugins, `cargo build --release` for the Light Mix helper, then `powershell -File suite/installer/build.ps1`. The installer embeds its payload, so the produced exe is standalone.
 
