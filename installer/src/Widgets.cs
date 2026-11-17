@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // Widgets.cs — Material 3 controls painted by hand (C# 5 / .NET Framework).
 using System;
 using System.Drawing;

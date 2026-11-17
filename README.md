@@ -69,7 +69,7 @@ MOS-Suite-Setup-1.0.0.exe /S /uninstall
 
 ## 许可
 
-MIT，见 `LICENSE`。灯光混合是 Light Wrap 类效果的独立实现（灵感来自 Digital Anarchy Light Wrap Fantastic），不含第三方代码或素材，与该产品及其公司无隶属关系；发布时不要附带 `_ref` 里的参考文档。
+AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本），见 `LICENSE`。把改动后的版本作为网络服务提供给他人时，需要按该许可证公开对应源码。灯光混合是 Light Wrap 类效果的独立实现（灵感来自 Digital Anarchy Light Wrap Fantastic），不含第三方代码或素材，与该产品及其公司无隶属关系；发布时不要附带 `_ref` 里的参考文档。
 
 ---
 
@@ -81,4 +81,4 @@ Build with `node <plugin>/build.js` for the wasm plugins, `cargo build --release
 
 Install by running the installer or following `docs/en/Install-Guide.md`. Silent install: `/S /lang=en /effects=en /dir="..."`, `/S /uninstall`; log in `%TEMP%\mos-suite-setup.log`.
 
-MIT licensed, see `LICENSE`. Light Mix is an independent Light Wrap style effect inspired by Digital Anarchy Light Wrap Fantastic; it contains no third-party code or assets and is not affiliated with that company. Do not publish the reference documents in `_ref`.
+AGPL-3.0-or-later, see `LICENSE`. If you offer a modified version to others over a network, you must publish the corresponding source under the same license. Light Mix is an independent Light Wrap style effect inspired by Digital Anarchy Light Wrap Fantastic; it contains no third-party code or assets and is not affiliated with that company. Do not publish the reference documents in `_ref`.

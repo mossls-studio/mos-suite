@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // Dialog.cs — Material 3 confirmation dialog (28dp corners, surface container high).
 using System;
 using System.Drawing;

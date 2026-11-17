@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // 启动时自动加载外部效果 helper（mos_灯光混合 等）
 // EffectCraft 默认不会在启动时启动 helpers，这里手动扫描一次。
 // 需要 Settings ▸ Scripting & Expressions ▸ Allow Scripts to Write Files and Access Network 处于开启状态。

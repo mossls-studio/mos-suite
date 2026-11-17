@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // InstallerCore.cs — payload extraction, install/uninstall, state detection, silent CLI helpers.
 using System;
 using System.Collections.Generic;

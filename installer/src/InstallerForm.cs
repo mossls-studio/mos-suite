@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // InstallerForm.cs — the Material 3 installer window.
 using System;
 using System.Collections.Generic;

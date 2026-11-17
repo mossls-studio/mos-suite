@@ -1,4 +1,4 @@
-# build.ps1 — assembles the payload and compiles the Material 3 installer with the
+﻿# build.ps1 — assembles the payload and compiles the Material 3 installer with the
 # .NET Framework C# compiler that ships with Windows (no SDK, no runtime download).
 param(
     [string]$Configuration = "Release"

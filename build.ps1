@@ -1,4 +1,4 @@
-# build.ps1 — build all four effects and the installer.
+﻿# build.ps1 — build all four effects and the installer.
 param(
     [switch]$SkipWasm,
     [switch]$SkipHelper

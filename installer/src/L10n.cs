@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // L10n.cs — installer strings (zh / en) and effect-naming tables.
 using System;
 using System.Collections.Generic;

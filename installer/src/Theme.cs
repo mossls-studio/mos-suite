@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 MOSSLS
+
 // Theme.cs — Material 3 design tokens for the MOS suite installer.
 // Baseline light scheme, fixed type scale, per-component shape scale. C# 5 syntax on purpose:
 // the installer builds with the .NET Framework csc.exe that ships with Windows.

@@ -92,4 +92,4 @@ If you used the installer, just run it and press Uninstall.
 
 ## License
 
-The four effects are distributed under the MIT license. Light Mix is an independent re-implementation of Digital Anarchy Light Wrap Fantastic; it contains none of their code or assets. The name `mos_lightmix` only describes what the effect does.
+The four effects are distributed under AGPL-3.0-or-later (see `LICENSE` in the suite repo); if you offer a modified version over a network, you must publish the corresponding source. Light Mix is an independent Light Wrap style effect inspired by Digital Anarchy Light Wrap Fantastic; it contains none of their code or assets and is not affiliated with that company.
