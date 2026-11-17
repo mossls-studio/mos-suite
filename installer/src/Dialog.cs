@@ -37,13 +37,13 @@ namespace MosSuite
             ClientSize = new Size(Theme.Dp(440), Theme.Dp(228));
             Padding = new Padding(0);
 
+            int y = ClientSize.Height - Theme.Dp(24) - Theme.Dp(40);
             M3Button cancelButton = new M3Button();
             cancelButton.Style = M3ButtonStyle.Text;
             cancelButton.Text = cancelText;
             cancelButton.BackColor = Theme.SurfaceHigh;
             cancelButton.Height = Theme.Dp(40);
             cancelButton.FitWidth();
-            cancelButton.Location = new Point(Theme.Dp(24), ClientSize.Height - Theme.Dp(24) - Theme.Dp(40));
             cancelButton.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
             Controls.Add(cancelButton);
 
@@ -53,10 +53,13 @@ namespace MosSuite
             confirmButton.BackColor = Theme.SurfaceHigh;
             confirmButton.Height = Theme.Dp(40);
             confirmButton.FitWidth();
-            confirmButton.Location = new Point(ClientSize.Width - Theme.Dp(24) - confirmButton.Width,
-                ClientSize.Height - Theme.Dp(24) - Theme.Dp(40));
+            confirmButton.Location = new Point(ClientSize.Width - Theme.Dp(24) - confirmButton.Width, y);
             confirmButton.Click += delegate { DialogResult = DialogResult.OK; Close(); };
             Controls.Add(confirmButton);
+
+            // Both actions sit bottom-right, cancel first — the earlier build pinned cancel
+            // to the left edge, which read like a third, unrelated action.
+            cancelButton.Location = new Point(confirmButton.Left - Theme.Dp(8) - cancelButton.Width, y);
 
             cancelButton.Focus();
         }

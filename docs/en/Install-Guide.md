@@ -1,4 +1,4 @@
-# MOS Suite · Manual install guide
+# MOS Suite · Manual Installation Guide
 
 For EffectCraft. The suite ships four effects in two Effects-panel groups:
 
@@ -7,42 +7,42 @@ For EffectCraft. The suite ships four effects in two Effects-panel groups:
 | MOS Deform | mos_shake | mos.shake | 1.2.0 |
 | MOS Deform | mos_shrink | mos.shrink | 1.3.7 |
 | MOS VFX | mos_shadow | mos.shadow | 0.6.2 |
-| MOS VFX | mos_lightmix | mos.lightwrap | 1.4.0 |
+| MOS VFX | mos_lightmix | mos.lightwrap | 1.5.0 |
 
-Default install root: `%APPDATA%\EffectCraft` (i.e. `C:\Users\<you>\AppData\Roaming\EffectCraft`).
+Default install folder: `%APPDATA%\EffectCraft` (`C:\Users\<you>\AppData\Roaming\EffectCraft`).
 
 ## Option 1 — the installer (recommended)
 
-Run `MOS-Suite-Setup-1.0.0.exe`:
+Run `MOS-Suite-Setup-1.1.0.exe`. The installer follows the system language on its own; there is no installer-language picker. It offers two language settings:
 
-1. Pick the installer language (System / 中文 / English).
-2. Pick the effects-panel language (System / 中文 / English) — this sets the group, effect and parameter names in the Effects panel.
-3. Untick any component you do not want.
-4. Press Install, then restart EffectCraft.
+1. **Effect names** (System / English) — the language of the **group and effect names** in the Effects panel. "System" follows the Windows display language and falls back to English on non-Chinese systems.
+2. **Parameter language** (System / 中文 / English) — the language of **parameter names and popup options** inside the effect controls. "System" follows the system language and falls back to English when the suite has no build for it (Japanese, for example).
 
-You can re-run the installer any time to change the effects language, or edit `mos-suite.json` directly (below).
+Untick any effect you do not want, confirm the install folder, press **Install**, then restart EffectCraft.
 
-## Option 2 — manual install
+Both settings can be changed later by re-running the installer or by editing `mos-suite.json` (below).
+
+## Option 2 — manual installation
 
 ### 1. Quit EffectCraft
 
-Quit EffectCraft completely. If Light Mix was installed before, also end `effectcraft-helper-mos-lightmix.exe`.
+Quit EffectCraft completely, and end `effectcraft-helper-mos-lightmix.exe` if Light Mix is already installed.
 
 ### 2. Copy the files
 
-Copy the files for your language (`<lang>` is `zh` or `en`) into place:
+The installer payload carries the three wasm effects in four "names × parameters" combinations. Folder names are `<names>-<params>`: `zh-zh`, `zh-en`, `en-zh`, `en-en`. Pick your combination first (for example "names follow system = Chinese, parameters = English" is `zh-en`), then copy:
 
 | Destination | Source |
 | --- | --- |
-| `Plug-ins\mos_shadow.wasm` | `plug-ins\<lang>\mos_shadow.wasm` |
-| `Plug-ins\mos_shake.wasm` | `plug-ins\<lang>\mos_shake.wasm` |
-| `Plug-ins\mos_shrink.wasm` | `plug-ins\<lang>\mos_shrink.wasm` |
+| `Plug-ins\mos_shadow.wasm` | `plug-ins\<pair>\mos_shadow.wasm` |
+| `Plug-ins\mos_shake.wasm` | `plug-ins\<pair>\mos_shake.wasm` |
+| `Plug-ins\mos_shrink.wasm` | `plug-ins\<pair>\mos_shrink.wasm` |
 | `helpers\effectcraft-helper-mos-lightmix.exe` | `helper\effectcraft-helper-mos-lightmix.exe` |
 | `Scripts\Startup\mos-load-helpers.jsx` | `scripts\mos-load-helpers.jsx` |
 | `mos-suite\manual\zh\安装说明.md` | `manual\zh\安装说明.md` |
 | `mos-suite\manual\en\Install-Guide.md` | `manual\en\Install-Guide.md` |
 
-Create `Plug-ins`, `helpers` and `Scripts\Startup` if they do not exist. Partial installs are fine: an effect only appears when its `.wasm` is present.
+Create `Plug-ins`, `helpers` and `Scripts\Startup` if they do not exist. **Partial installs are fine**: an effect simply does not appear if its `.wasm` is missing.
 
 ### 3. Write the language settings
 
@@ -50,27 +50,32 @@ Create `%APPDATA%\EffectCraft\mos-suite.json` (UTF-8, no BOM):
 
 ```json
 {
-  "schema": 1,
-  "suiteVersion": "1.0.0",
-  "effectsLanguage": "en"
+  "schema": 2,
+  "suiteVersion": "1.1.0",
+  "namesLanguage": "system",
+  "paramsLanguage": "system",
+  "namesResolved": "en",
+  "paramsResolved": "en"
 }
 ```
 
-- `effectsLanguage` is `zh` or `en`.
-- The four effects' names and parameter names come from the wasm build itself, so **the wasm files must match the language**; the Light Mix helper is a single exe that reads this file at startup.
-- Without this file the suite defaults to Chinese.
+- `namesLanguage` is `system` or `en` (`system` follows the OS; non-Chinese systems get English).
+- `paramsLanguage` is `system`, `zh` or `en` (`system` falls back to English when the suite has no build for that language).
+- `namesResolved` / `paramsResolved` are the languages actually in effect and **the Light Mix helper reads these**; without them it falls back to `namesLanguage` / `paramsLanguage`, then to English.
+- Suite 1.0 used a single `effectsLanguage` (`zh` / `en`) for everything; it is still honoured, but the two new keys win.
+- With no language settings at all the suite runs in English.
 
-### 4. Allow scripts
+### 4. Allow the startup script
 
-EffectCraft ▸ Settings ▸ Scripting & Expressions ▸ enable "Allow Scripts to Write Files and Access Network", then restart EffectCraft. The startup script needs it to scan effect helpers.
+EffectCraft ▸ Settings ▸ Scripting & Expressions ▸ enable **Allow Scripts to Write Files and Access Network**, then restart EffectCraft. The startup script needs this to scan for effect helpers.
 
-### 5. Check
+### 5. Verify
 
-Open the Effects panel: you should see the groups **MOS Deform** and **MOS VFX**. Add an effect to a layer to try it.
+Open the Effects panel: you should see **MOS Deform** and **MOS VFX** (or **MOS 形变 / MOS 视效** in Chinese). Drag one onto a layer to try it.
 
 ## Uninstall
 
-Quit EffectCraft and delete:
+Quit EffectCraft, then delete:
 
 - `Plug-ins\mos_shadow.wasm`, `mos_shake.wasm`, `mos_shrink.wasm`
 - `helpers\effectcraft-helper-mos-lightmix.exe`
@@ -78,18 +83,20 @@ Quit EffectCraft and delete:
 - the whole `mos-suite\` folder
 - `mos-suite.json`
 
-If you used the installer, just run it and press Uninstall.
+If you used the installer, just reopen it and press **Uninstall**.
 
 ## Troubleshooting
 
-**Light Mix does not show up.** Run Effects ▸ Scan Effect Helpers…; make sure `helpers\effectcraft-helper-mos-lightmix.exe` and `Scripts\Startup\mos-load-helpers.jsx` exist and script access is allowed. From the console, `effect.helpers.list` should report `running: true`.
+**Light Mix does not appear.** Run Effects ▸ Scan Effect Helpers…, confirm `helpers\effectcraft-helper-mos-lightmix.exe` and `Scripts\Startup\mos-load-helpers.jsx` exist and that the script permission is on. `effect.helpers.list` should show `running: true`.
 
-**Light Mix uses the wrong background position.** The helper cannot read the background layer's transform — a known limitation. Pre-compose the background first and use the pre-comp as the background layer.
+**Light Mix picks the wrong background position.** The helper cannot read background-layer transforms — a known limitation. Pre-compose the background and use the comp as the background layer.
 
-**Overwriting a wasm fails with access denied.** EffectCraft is still running; quit it completely and retry.
+**Replacing a wasm fails with access denied.** EffectCraft is still running; quit it fully and retry.
 
-**The language does not switch.** Check `effectsLanguage` in `mos-suite.json` and that the wasm files in `Plug-ins` are the matching language build; restart afterwards.
+**Names and parameters use different languages, or a language change does nothing.** Each wasm carries exactly one names+parameters combination, so either re-run the installer (it swaps the wasm) or replace the wasm with the matching `<pair>` build by hand; keep `namesResolved` / `paramsResolved` in `mos-suite.json` in sync and restart.
+
+**Non-Chinese system still shows Chinese effect names.** A `zh-*` build is installed; set **Effect names** to English (or System) in the installer and reinstall.
 
 ## License
 
-The four effects are distributed under AGPL-3.0-or-later (see `LICENSE` in the suite repo); if you offer a modified version over a network, you must publish the corresponding source. Light Mix is an independent Light Wrap style effect inspired by Digital Anarchy Light Wrap Fantastic; it contains none of their code or assets and is not affiliated with that company.
+The four effects are distributed under AGPL-3.0-or-later (see the suite repository `LICENSE`); if you run a modified version as a network service you must offer its source. Light Mix is an independent implementation of a light-wrap style effect and contains no code or assets from any third-party product.

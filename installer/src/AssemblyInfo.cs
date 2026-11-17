@@ -9,6 +9,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("MOSSLS")]
 [assembly: AssemblyProduct("MOS Suite")]
 [assembly: AssemblyCopyright("AGPL-3.0-or-later")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 [assembly: ComVisible(false)]

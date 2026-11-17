@@ -20,27 +20,29 @@ namespace MosSuite
             return (int)Math.Round(dp * Scale);
         }
 
-        // ---- color roles (M3 baseline light) ----
-        public static readonly Color Primary = Color.FromArgb(0x67, 0x50, 0xA4);
-        public static readonly Color OnPrimary = Color.FromArgb(0xFF, 0xFF, 0xFF);
-        public static readonly Color PrimaryContainer = Color.FromArgb(0xEA, 0xDD, 0xFF);
-        public static readonly Color OnPrimaryContainer = Color.FromArgb(0x21, 0x00, 0x5D);
-        public static readonly Color Secondary = Color.FromArgb(0x62, 0x5B, 0x71);
-        public static readonly Color SecondaryContainer = Color.FromArgb(0xE8, 0xDE, 0xF8);
-        public static readonly Color OnSecondaryContainer = Color.FromArgb(0x1D, 0x19, 0x2B);
-        public static readonly Color Error = Color.FromArgb(0xB3, 0x26, 0x1E);
-        public static readonly Color OnError = Color.FromArgb(0xFF, 0xFF, 0xFF);
-        public static readonly Color Surface = Color.FromArgb(0xFE, 0xF7, 0xFF);
-        public static readonly Color SurfaceLowest = Color.FromArgb(0xFF, 0xFF, 0xFF);
-        public static readonly Color SurfaceLow = Color.FromArgb(0xF7, 0xF2, 0xFA);
-        public static readonly Color SurfaceContainer = Color.FromArgb(0xF3, 0xED, 0xF7);
-        public static readonly Color SurfaceHigh = Color.FromArgb(0xEC, 0xE6, 0xF0);
-        public static readonly Color SurfaceHighest = Color.FromArgb(0xE6, 0xE0, 0xE9);
-        public static readonly Color OnSurface = Color.FromArgb(0x1D, 0x1B, 0x20);
-        public static readonly Color OnSurfaceVariant = Color.FromArgb(0x49, 0x45, 0x4F);
-        public static readonly Color Outline = Color.FromArgb(0x79, 0x74, 0x7E);
-        public static readonly Color OutlineVariant = Color.FromArgb(0xCA, 0xC4, 0xD0);
-        public static readonly Color InverseSurface = Color.FromArgb(0x32, 0x2F, 0x35);
+        // ---- color roles (M3 baseline dark, used by default) ----
+        public static readonly Color Primary = Color.FromArgb(0xD0, 0xBC, 0xFF);
+        public static readonly Color OnPrimary = Color.FromArgb(0x38, 0x1E, 0x72);
+        public static readonly Color PrimaryContainer = Color.FromArgb(0x4F, 0x37, 0x8B);
+        public static readonly Color OnPrimaryContainer = Color.FromArgb(0xEA, 0xDD, 0xFF);
+        public static readonly Color Secondary = Color.FromArgb(0xCC, 0xC2, 0xDC);
+        public static readonly Color SecondaryContainer = Color.FromArgb(0x4A, 0x44, 0x58);
+        public static readonly Color OnSecondaryContainer = Color.FromArgb(0xE8, 0xDE, 0xF8);
+        public static readonly Color Error = Color.FromArgb(0xF2, 0xB8, 0xB5);
+        public static readonly Color OnError = Color.FromArgb(0x60, 0x14, 0x10);
+        public static readonly Color ErrorContainer = Color.FromArgb(0x8C, 0x1D, 0x18);
+        public static readonly Color OnErrorContainer = Color.FromArgb(0xF9, 0xDE, 0xDC);
+        public static readonly Color Surface = Color.FromArgb(0x14, 0x12, 0x18);
+        public static readonly Color SurfaceLowest = Color.FromArgb(0x0F, 0x0D, 0x13);
+        public static readonly Color SurfaceLow = Color.FromArgb(0x1D, 0x1B, 0x20);
+        public static readonly Color SurfaceContainer = Color.FromArgb(0x21, 0x1F, 0x26);
+        public static readonly Color SurfaceHigh = Color.FromArgb(0x2B, 0x29, 0x30);
+        public static readonly Color SurfaceHighest = Color.FromArgb(0x36, 0x34, 0x3B);
+        public static readonly Color OnSurface = Color.FromArgb(0xE6, 0xE0, 0xE9);
+        public static readonly Color OnSurfaceVariant = Color.FromArgb(0xCA, 0xC4, 0xD0);
+        public static readonly Color Outline = Color.FromArgb(0x93, 0x8F, 0x99);
+        public static readonly Color OutlineVariant = Color.FromArgb(0x49, 0x45, 0x4F);
+        public static readonly Color InverseSurface = Color.FromArgb(0xE6, 0xE0, 0xE9);
 
         // ---- shape scale ----
         public const int RadiusChip = 8;
@@ -95,6 +97,42 @@ namespace MosSuite
         private static Font Make(string family, float px, FontStyle style)
         {
             return new Font(family, px * Scale, style, GraphicsUnit.Pixel);
+        }
+
+        // ---- brand mark ----
+        private static Image logo;
+
+        public static Image Logo()
+        {
+            if (logo == null)
+            {
+                try
+                {
+                    using (System.IO.Stream s = typeof(Theme).Assembly.GetManifestResourceStream("Logo"))
+                    {
+                        if (s != null)
+                        {
+                            using (Image raw = Image.FromStream(s))
+                            {
+                                logo = new Bitmap(raw);
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            return logo;
+        }
+
+        public static void DrawLogo(Graphics g, RectangleF rect)
+        {
+            Image img = Logo();
+            if (img == null) return;
+            InterpolationMode old = g.InterpolationMode;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.DrawImage(img, rect);
+            g.InterpolationMode = old;
         }
 
         // ---- drawing helpers ----

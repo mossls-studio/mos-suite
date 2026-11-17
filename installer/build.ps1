@@ -1,7 +1,12 @@
 ﻿# build.ps1 — assembles the payload and compiles the Material 3 installer with the
 # .NET Framework C# compiler that ships with Windows (no SDK, no runtime download).
+#
+# The payload carries every language combination of the three wasm effects
+# (plug-ins/<names>-<params>/<effect>.wasm); the installer copies the one that
+# matches the chosen "effect names" + "parameter language" settings.
 param(
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [string]$Version = "1.1.0"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,7 +16,7 @@ $mos = Split-Path -Parent $suite
 $release = Join-Path $suite 'release'
 $payload = Join-Path $here 'payload'
 $stage = Join-Path $here 'stage'
-$version = '1.0.0'
+$version = $Version
 
 function Fail($message) {
     Write-Host "error: $message" -ForegroundColor Red
@@ -23,17 +28,19 @@ $shake = Join-Path $mos '形变\mos_shake'
 $shrink = Join-Path $mos '形变\mos_收缩'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
 
-$wasm = @(
-    @{ Src = Join-Path $shadow 'dist\zh\mos_shadow.wasm'; Lang = 'zh'; Name = 'mos_shadow.wasm' },
-    @{ Src = Join-Path $shadow 'dist\en\mos_shadow.wasm'; Lang = 'en'; Name = 'mos_shadow.wasm' },
-    @{ Src = Join-Path $shake 'dist\zh\mos_shake.wasm'; Lang = 'zh'; Name = 'mos_shake.wasm' },
-    @{ Src = Join-Path $shake 'dist\en\mos_shake.wasm'; Lang = 'en'; Name = 'mos_shake.wasm' },
-    @{ Src = Join-Path $shrink 'dist\zh\mos_shrink.wasm'; Lang = 'zh'; Name = 'mos_shrink.wasm' },
-    @{ Src = Join-Path $shrink 'dist\en\mos_shrink.wasm'; Lang = 'en'; Name = 'mos_shrink.wasm' }
+# language combinations produced by the three plugin build.js files
+$variants = @('zh-zh', 'zh-en', 'en-zh', 'en-en')
+$effects = @(
+    @{ Root = $shadow; File = 'mos_shadow.wasm' },
+    @{ Root = $shake;  File = 'mos_shake.wasm' },
+    @{ Root = $shrink; File = 'mos_shrink.wasm' }
 )
 
-foreach ($w in $wasm) {
-    if (-not (Test-Path $w.Src)) { Fail "missing plugin build: $($w.Src) (run the plugin build first)" }
+foreach ($v in $variants) {
+    foreach ($e in $effects) {
+        $src = Join-Path $e.Root "dist\$v\$($e.File)"
+        if (-not (Test-Path $src)) { Fail "missing plugin build: $src (run the plugin build first)" }
+    }
 }
 
 $helper = Join-Path $lightmix 'dist\effectcraft-helper-mos-lightmix.exe'
@@ -46,15 +53,20 @@ $manualEn = Join-Path $suite 'docs\en\Install-Guide.md'
 if (-not (Test-Path $manualZh)) { Fail "missing manual: $manualZh" }
 if (-not (Test-Path $manualEn)) { Fail "missing manual: $manualEn" }
 
+$logo = Join-Path $here 'assets\logo.png'
+if (-not (Test-Path $logo)) { Fail "missing logo: $logo" }
+
 Write-Host 'staging payload...'
 foreach ($path in @($payload, $stage)) {
     if (Test-Path $path) { Remove-Item $path -Recurse -Force }
 }
 New-Item -ItemType Directory -Force -Path $payload | Out-Null
-foreach ($w in $wasm) {
-    $dir = Join-Path $payload "plug-ins\$($w.Lang)"
+foreach ($v in $variants) {
+    $dir = Join-Path $payload "plug-ins\$v"
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    Copy-Item $w.Src (Join-Path $dir $w.Name) -Force
+    foreach ($e in $effects) {
+        Copy-Item (Join-Path $e.Root "dist\$v\$($e.File)") (Join-Path $dir $e.File) -Force
+    }
 }
 New-Item -ItemType Directory -Force -Path (Join-Path $payload 'helper') | Out-Null
 Copy-Item $helper (Join-Path $payload 'helper\effectcraft-helper-mos-lightmix.exe') -Force
@@ -69,6 +81,7 @@ $zip = Join-Path $stage 'payload.zip'
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($payload, $zip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+Write-Host ("payload {0:N0} bytes, {1} variants x {2} effects" -f (Get-Item $zip).Length, $variants.Count, $effects.Count)
 
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 if (-not (Test-Path $csc)) {
@@ -88,6 +101,11 @@ $cscArgs = @(
     '/codepage:65001',
     "/win32manifest:$here\app.manifest",
     "/resource:$zip,Payload",
+    "/resource:$logo,Logo"
+)
+$icon = Join-Path $here 'assets\logo.ico'
+if (Test-Path $icon) { $cscArgs += "/win32icon:$icon" }
+$cscArgs += @(
     '/r:System.dll',
     '/r:System.Drawing.dll',
     '/r:System.Windows.Forms.dll',

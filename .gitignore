@@ -2,3 +2,4 @@ installer/stage/
 installer/obj/
 release/
 *.log
+installer/payload/

@@ -21,17 +21,17 @@ namespace MosSuite
         public string Group;
         public bool Selected = true;
 
-        public string Name(string effectsLang)
+        public string Name(string namesLang)
         {
-            return L10n.EffectName(Id, effectsLang);
+            return L10n.EffectName(Id, namesLang);
         }
     }
 
     internal sealed class InstallOptions
     {
         public string Root;
-        public string EffectsLanguage = "zh";
-        public string InstallerLanguage = "zh";
+        public string NamesLanguage = "system";   // "system" | "en"
+        public string ParamsLanguage = "system";  // "system" | "zh" | "en"
         public List<ComponentInfo> Components = new List<ComponentInfo>();
     }
 
@@ -46,8 +46,8 @@ namespace MosSuite
     {
         public bool Installed;
         public string SuiteVersion = "";
-        public string EffectsLanguage = "zh";
-        public string InstallerLanguage = "zh";
+        public string NamesLanguage = "system";
+        public string ParamsLanguage = "system";
         public string Root = "";
         public List<string> Files = new List<string>();
 
@@ -70,7 +70,7 @@ namespace MosSuite
 
     internal static class InstallerCore
     {
-        public const string SuiteVersion = "1.0.0";
+        public const string SuiteVersion = "1.1.0";
         public const string ConfigName = "mos-suite.json";
         public const string RecordDir = "mos-suite";
         public const string HelperExe = "effectcraft-helper-mos-lightmix.exe";
@@ -87,8 +87,14 @@ namespace MosSuite
             list.Add(new ComponentInfo { Id = "shake", Wasm = "mos_shake.wasm", Version = "1.2.0", Group = "deform" });
             list.Add(new ComponentInfo { Id = "shrink", Wasm = "mos_shrink.wasm", Version = "1.3.7", Group = "deform" });
             list.Add(new ComponentInfo { Id = "shadow", Wasm = "mos_shadow.wasm", Version = "0.6.2", Group = "vfx" });
-            list.Add(new ComponentInfo { Id = "lightmix", Wasm = "", Version = "1.4.0", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "lightmix", Wasm = "", Version = "1.5.0", Group = "vfx" });
             return list;
+        }
+
+        // The payload ships one wasm per (names, params) language pair.
+        public static string Variant(string namesLang, string paramsLang)
+        {
+            return namesLang + "-" + paramsLang;
         }
 
         public static bool HasLightmix(InstallOptions o)
@@ -160,6 +166,10 @@ namespace MosSuite
                 float step = 0.72f / Math.Max(1, selected + (HasLightmix(o) ? 2 : 0));
                 float done = 0.08f;
 
+                string namesLang = L10n.ResolveNames(o.NamesLanguage);
+                string paramsLang = L10n.ResolveParams(o.ParamsLanguage);
+                string variant = Variant(namesLang, paramsLang);
+
                 bool lightmix = false;
                 foreach (ComponentInfo c in o.Components)
                 {
@@ -169,8 +179,8 @@ namespace MosSuite
                         lightmix = true;
                         continue;
                     }
-                    progress(done, L10n.F("progress.copy", c.Name(o.EffectsLanguage)));
-                    string src = Path.Combine(temp, "plug-ins", o.EffectsLanguage, c.Wasm);
+                    progress(done, L10n.F("progress.copy", c.Name(namesLang)));
+                    string src = Path.Combine(temp, "plug-ins", variant, c.Wasm);
                     if (!File.Exists(src)) throw new FileNotFoundException("Payload entry missing: " + src);
                     string dst = Path.Combine(o.Root, "Plug-ins", c.Wasm);
                     Directory.CreateDirectory(Path.GetDirectoryName(dst));
@@ -270,10 +280,16 @@ namespace MosSuite
 
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("{");
-            sb.AppendLine("  \"schema\": 1,");
+            sb.AppendLine("  \"schema\": 2,");
             sb.AppendLine("  \"suiteVersion\": \"" + SuiteVersion + "\",");
-            sb.AppendLine("  \"effectsLanguage\": \"" + Json(o.EffectsLanguage) + "\",");
-            sb.AppendLine("  \"installerLanguage\": \"" + Json(o.InstallerLanguage) + "\",");
+            sb.AppendLine("  \"namesLanguage\": \"" + Json(o.NamesLanguage) + "\",");
+            sb.AppendLine("  \"paramsLanguage\": \"" + Json(o.ParamsLanguage) + "\",");
+            // The resolved pair is what the Rust helper uses: it has no locale API, so
+            // "system" must already be turned into "zh"/"en" here.
+            sb.AppendLine("  \"namesResolved\": \"" + Json(L10n.ResolveNames(o.NamesLanguage)) + "\",");
+            sb.AppendLine("  \"paramsResolved\": \"" + Json(L10n.ResolveParams(o.ParamsLanguage)) + "\",");
+            sb.AppendLine("  \"effectsLanguage\": \"" + Json(L10n.ResolveNames(o.NamesLanguage)) + "\",");
+            sb.AppendLine("  \"installerLanguage\": \"" + Json(L10n.UiLang) + "\",");
             sb.AppendLine("  \"installedAt\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
             sb.AppendLine("  \"root\": \"" + Json(o.Root) + "\",");
             sb.AppendLine("  \"components\": { " + components + " },");
@@ -368,10 +384,17 @@ namespace MosSuite
             state.Installed = true;
             string text = File.ReadAllText(cfg, Encoding.UTF8);
             state.SuiteVersion = Match(text, "suiteVersion");
-            string effects = Match(text, "effectsLanguage");
-            if (effects == "en" || effects == "zh") state.EffectsLanguage = effects;
-            string installer = Match(text, "installerLanguage");
-            if (installer == "en" || installer == "zh") state.InstallerLanguage = installer;
+            string names = Match(text, "namesLanguage");
+            if (names == "en" || names == "system") state.NamesLanguage = names;
+            string parameters = Match(text, "paramsLanguage");
+            if (parameters == "zh" || parameters == "en" || parameters == "system") state.ParamsLanguage = parameters;
+            if (names.Length == 0 && parameters.Length == 0)
+            {
+                // Records written by suite 1.0.0 only had one effectsLanguage.
+                string legacy = Match(text, "effectsLanguage");
+                if (legacy == "en") state.NamesLanguage = "en";
+                if (legacy == "en" || legacy == "zh") state.ParamsLanguage = legacy;
+            }
 
             Match m = Regex.Match(text, "\"files\"\\s*:\\s*\\[(.*?)\\]", RegexOptions.Singleline);
             if (m.Success)

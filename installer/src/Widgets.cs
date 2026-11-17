@@ -352,7 +352,9 @@ namespace MosSuite
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            BackColor = Theme.SurfaceLow;
+            // Children paint their own SurfaceContainer background, so the card must match
+            // it or every label shows as a lighter box (seen in the 1.1.0 Done/Error cards).
+            BackColor = Theme.SurfaceContainer;
             TabStop = false;
         }
 
@@ -589,17 +591,82 @@ namespace MosSuite
         }
     }
 
+    // Text block drawn with TextRenderer so baselines match the hand-painted rows,
+    // the title and the chips (a plain Label has no vertical alignment).
+    internal sealed class M3Text : Control
+    {
+        private Font textFont = Theme.BodyMedium;
+        private Color textColor = Theme.OnSurface;
+
+        public bool Wrapped;
+        public HorizontalAlignment Align = HorizontalAlignment.Left;
+
+        public M3Text()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            TabStop = false;
+            Height = Theme.Dp(20);
+            BackColor = Theme.Surface;
+        }
+
+        public Font TextFont
+        {
+            get { return textFont; }
+            set { textFont = value; Invalidate(); }
+        }
+
+        public Color TextColor
+        {
+            get { return textColor; }
+            set { textColor = value; Invalidate(); }
+        }
+
+        protected override void OnTextChanged(EventArgs e)
+        {
+            base.OnTextChanged(e);
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            if (BackColor.A > 0)
+            {
+                using (SolidBrush bg = new SolidBrush(BackColor))
+                {
+                    g.FillRectangle(bg, ClientRectangle);
+                }
+            }
+
+            TextFormatFlags flags = TextFormatFlags.NoPrefix;
+            if (Wrapped)
+            {
+                flags |= TextFormatFlags.Top | TextFormatFlags.WordBreak;
+            }
+            else
+            {
+                flags |= TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+            }
+            if (Align == HorizontalAlignment.Center) flags |= TextFormatFlags.HorizontalCenter;
+            else if (Align == HorizontalAlignment.Right) flags |= TextFormatFlags.Right;
+            else flags |= TextFormatFlags.Left;
+
+            TextRenderer.DrawText(g, Text, textFont, Rectangle.Round(ClientRectangle), textColor, flags);
+        }
+    }
+
     internal static class Widgets
     {
-        public static Label Label(string text, Font font, Color color, Color background)
+        public static M3Text Label(string text, Font font, Color color, Color background)
         {
-            Label l = new Label();
+            M3Text l = new M3Text();
             l.Text = text;
-            l.Font = font;
-            l.ForeColor = color;
+            l.TextFont = font;
+            l.TextColor = color;
             l.BackColor = background;
-            l.AutoSize = false;
-            l.UseMnemonic = false;
             l.Margin = new Padding(0);
             return l;
         }

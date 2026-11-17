@@ -2,6 +2,8 @@
 // Copyright (C) 2026 MOSSLS
 
 // L10n.cs — installer strings (zh / en) and effect-naming tables.
+// The installer UI itself always follows the system language; only the effect
+// naming and the effect-control parameters are configurable.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,22 +12,22 @@ namespace MosSuite
 {
     internal static class L10n
     {
-        // "zh" or "en" — the language the installer UI is drawn in.
+        // "zh" or "en" — the language the installer UI is drawn in (always the system one).
         public static string UiLang = "zh";
 
         private static readonly Dictionary<string, string> Zh = new Dictionary<string, string>
         {
             { "app.title", "MOS 套件" },
-            { "app.brand", "MOS" },
             { "close.tip", "关闭" },
             { "hero.title", "安装 MOS 效果套件" },
-            { "hero.body", "阴影、抖动、收缩、灯光混合，4 个 EffectCraft 效果，中文与英文效果栏都支持。" },
-            { "lang.installer", "安装器语言" },
-            { "lang.effects", "效果栏语言" },
+            { "hero.body", "阴影、抖动、收缩、灯光混合，4 个 EffectCraft 效果。" },
+            { "lang.names", "效果名称" },
+            { "lang.names.hint", "英文时效果栏里的分组名、效果名显示英文；跟随系统则使用系统语言。" },
+            { "lang.params", "参数语言" },
+            { "lang.params.hint", "效果控件里的参数名、选项与说明。系统语言不是中文时默认英文。" },
             { "lang.system", "跟随系统" },
             { "lang.chinese", "中文" },
             { "lang.english", "English" },
-            { "lang.hint", "效果栏语言决定效果面板里的分组、效果名和参数名。装完随时可以重跑安装器修改。" },
             { "comp.installed", "已安装 {0}" },
             { "comp.notInstalled", "未安装" },
             { "comp.update", "有新版本" },
@@ -49,9 +51,12 @@ namespace MosSuite
             { "unin.body", "会删除这 4 个效果和语言设置，不影响其他插件和工程文件。" },
             { "unin.done", "已卸载" },
             { "unin.failed", "卸载没有完成" },
-            { "state.installed", "已安装 {0} · 效果栏 {1}" },
-            { "effects.zh", "中文" },
-            { "effects.en", "英文" },
+            { "state.installed", "已安装 {0}" },
+            { "state.detail", "名称 {0} · 参数 {1}" },
+            { "names.zh", "中文" },
+            { "names.en", "英文" },
+            { "params.zh", "中文" },
+            { "params.en", "English" },
             { "progress.extract", "正在解包安装文件…" },
             { "progress.copy", "正在复制 {0}…" },
             { "progress.helper", "正在安装灯光混合助手…" },
@@ -65,16 +70,16 @@ namespace MosSuite
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>
         {
             { "app.title", "MOS Suite" },
-            { "app.brand", "MOS" },
             { "close.tip", "Close" },
             { "hero.title", "Install the MOS effects suite" },
-            { "hero.body", "Shadow, Shake, Shrink and Light Mix — four EffectCraft effects, in Chinese and English." },
-            { "lang.installer", "Installer language" },
-            { "lang.effects", "Effects panel language" },
+            { "hero.body", "Shadow, Shake, Shrink and Light Mix — four EffectCraft effects." },
+            { "lang.names", "Effect names" },
+            { "lang.names.hint", "English shows English group and effect names in the Effects panel; System uses your language." },
+            { "lang.params", "Parameter language" },
+            { "lang.params.hint", "Parameter names, options and help inside the effect controls. Defaults to English unless the system language is Chinese." },
             { "lang.system", "System" },
             { "lang.chinese", "中文" },
             { "lang.english", "English" },
-            { "lang.hint", "The effects language sets the group, effect and parameter names in the Effects panel. Re-run the installer any time to change it." },
             { "comp.installed", "Installed {0}" },
             { "comp.notInstalled", "Not installed" },
             { "comp.update", "Update available" },
@@ -98,9 +103,12 @@ namespace MosSuite
             { "unin.body", "Removes the four effects and their language settings. Other plug-ins and projects are not touched." },
             { "unin.done", "Uninstalled" },
             { "unin.failed", "Uninstall did not finish" },
-            { "state.installed", "Installed {0} · effects {1}" },
-            { "effects.zh", "Chinese" },
-            { "effects.en", "English" },
+            { "state.installed", "Installed {0}" },
+            { "state.detail", "names {0} · params {1}" },
+            { "names.zh", "Chinese" },
+            { "names.en", "English" },
+            { "params.zh", "Chinese" },
+            { "params.en", "English" },
             { "progress.extract", "Unpacking installer files…" },
             { "progress.copy", "Copying {0}…" },
             { "progress.helper", "Installing the Light Mix helper…" },
@@ -129,12 +137,30 @@ namespace MosSuite
             return code == "zh" ? "zh" : "en";
         }
 
-        public static string EffectsLabel(string lang)
+        // "system" | "en" -> the language actually baked into the installed effect names.
+        public static string ResolveNames(string raw)
         {
-            return T(lang == "en" ? "effects.en" : "effects.zh");
+            return raw == "en" ? "en" : SystemLanguage();
         }
 
-        // Effect display names per effects language.
+        // "system" | "zh" | "en" -> the language of the effect-control parameters.
+        public static string ResolveParams(string raw)
+        {
+            if (raw == "zh" || raw == "en") return raw;
+            return SystemLanguage();
+        }
+
+        public static string NamesLabel(string lang)
+        {
+            return T(lang == "en" ? "names.en" : "names.zh");
+        }
+
+        public static string ParamsLabel(string lang)
+        {
+            return T(lang == "en" ? "params.en" : "params.zh");
+        }
+
+        // Effect display names per names language.
         public static string EffectName(string id, string lang)
         {
             bool en = lang == "en";
