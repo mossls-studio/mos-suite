@@ -1,0 +1,4 @@
+installer/stage/
+installer/obj/
+release/
+*.log
