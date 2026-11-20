@@ -1,6 +1,6 @@
 # MOS 套件 / MOS Suite
 
-EffectCraft 的 4 个效果，合并成一个套件，并分成两个效果栏分组：
+EffectCraft 的 5 个效果，合并成一个套件，并分成三个效果栏分组：
 
 | 分组 Group | 效果 Effect | ID | 版本 Version | 源码 Source |
 | --- | --- | --- | --- | --- |
@@ -8,6 +8,7 @@ EffectCraft 的 4 个效果，合并成一个套件，并分成两个效果栏�
 | MOS 形变 / MOS Deform | 收缩 Shrink | `mos.shrink` | 1.3.7 | <https://github.com/mossls-studio/mos-shrink> |
 | MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | 0.6.2 | <https://github.com/mossls-studio/mos-shadow> |
 | MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 1.5.0 | <https://github.com/mossls-studio/mos-lightmix> |
+| MOS 模糊 / MOS Blur | 模糊 Blur | `mos.blur` | 0.1.0 | 本地仓库，尚未推送 |
 
 开源地址（AGPL-3.0-or-later，各自独立仓库，安装器与说明在套件仓库）：
 
@@ -18,8 +19,9 @@ EffectCraft 的 4 个效果，合并成一个套件，并分成两个效果栏�
 | <https://github.com/mossls-studio/mos-shake> | 抖动 `mos.shake`（wasm，api 1） |
 | <https://github.com/mossls-studio/mos-shrink> | 收缩 `mos.shrink`（wasm，api 1） |
 | <https://github.com/mossls-studio/mos-lightmix> | 灯光混合 `mos.lightwrap`（Rust 外部助手，含 `helper/src/*.rs`） |
+| 模糊 `mos.blur` | 本地仓库 `模糊\mos_模糊`（Rust → wasm，尚未推送远端） |
 
-三个 wasm 插件各有 4 份构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`）；灯光混合是外部助手，同一份 exe 按 `mos-suite.json` 里的设置分别决定分组/效果名和参数名的语言。
+四个 wasm 插件各有 4 份构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`）；灯光混合是外部助手，同一份 exe 按 `mos-suite.json` 里的设置分别决定分组/效果名和参数名的语言。
 
 | 中文界面 | English names |
 | --- | --- |
@@ -34,22 +36,24 @@ mos/
     installer/          安装器源码（C# / .NET Framework 4，无 SDK 依赖）
       assets/           顶栏 logo（png + ico）
     docs/zh, docs/en    手动安装说明（会装进 <root>\mos-suite\manual\）
-    release/            构建产物：MOS-Suite-Setup-1.1.0.exe
+    release/            构建产物：MOS-Suite-Setup-1.2.0.exe
   vfx/mos_阴影/           mos.shadow（wasm，api 2）
   vfx/mos_灯光混合/        mos.lightwrap（Rust 外部助手）
   形变/mos_shake/         mos.shake（wasm，api 1）
   形变/mos_收缩/           mos.shrink（wasm，api 1）
+  模糊/mos_模糊/           mos.blur（wasm，api 2，Rust 源码 src/lib.rs）
 ```
 
 ## 构建
 
-前提：Windows、Node.js（各 wasm 插件目录里已带 `wabt` 依赖）、Rust 工具链（只有灯光混合需要）、.NET Framework 4（Windows 自带 `csc.exe`）。不需要 Visual Studio、不需要 .NET SDK。
+前提：Windows、Node.js（各 wasm 插件目录里已带 `wabt` 依赖）、Rust 工具链（灯光混合与模糊需要）、.NET Framework 4（Windows 自带 `csc.exe`）。不需要 Visual Studio、不需要 .NET SDK。
 
 ```powershell
-# 1) 三个 wasm 插件：默认各出 4 种语言组合到 dist\<名称语言>-<参数语言>\
+# 1) 四个 wasm 插件：默认各出 4 种语言组合到 dist\<名称语言>-<参数语言>\
 node 形变\mos_shake\build.js
 node 形变\mos_收缩\build.js
 node vfx\mos_阴影\build.js
+node 模糊\mos_模糊\build.js
 
 # 2) 灯光混合助手（Rust）
 cargo build --release --manifest-path vfx\mos_灯光混合\helper\Cargo.toml
@@ -59,7 +63,7 @@ cargo build --release --manifest-path vfx\mos_灯光混合\helper\Cargo.toml
 powershell -ExecutionPolicy Bypass -File suite\installer\build.ps1
 ```
 
-产物在 `suite\release\MOS-Suite-Setup-1.1.0.exe`。安装器把 payload 以 zip 资源嵌进 exe，不需要旁置文件。
+产物在 `suite\release\MOS-Suite-Setup-1.2.0.exe`。安装器把 payload 以 zip 资源嵌进 exe，不需要旁置文件。
 
 ## 安装
 
@@ -68,8 +72,8 @@ powershell -ExecutionPolicy Bypass -File suite\installer\build.ps1
 静默安装参数：
 
 ```powershell
-MOS-Suite-Setup-1.1.0.exe /S /names=en /params=zh /dir="%APPDATA%\EffectCraft"
-MOS-Suite-Setup-1.1.0.exe /S /uninstall
+MOS-Suite-Setup-1.2.0.exe /S /names=en /params=zh /dir="%APPDATA%\EffectCraft"
+MOS-Suite-Setup-1.2.0.exe /S /uninstall
 ```
 
 - `/names=` `system` | `en`，`/params=` `system` | `zh` | `en`；旧参数 `/lang=`、`/effects=` 仍可用（同时设置两项）。
@@ -91,9 +95,9 @@ AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本）�
 
 # MOS Suite (English)
 
-Four EffectCraft effects, shipped as one suite in two Effects-panel groups (table above). Each effect has its own AGPL-3.0-or-later repository: [mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-shadow](https://github.com/mossls-studio/mos-shadow), [mos-lightmix](https://github.com/mossls-studio/mos-lightmix); the installer and guides live in [mos-suite](https://github.com/mossls-studio/mos-suite). The three wasm plugins are built in four name×parameter combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`); Light Mix is a single external helper exe that localizes its names and parameter labels from the two settings in `mos-suite.json`.
+Five EffectCraft effects, shipped as one suite in three Effects-panel groups (table above). Each effect has its own AGPL-3.0-or-later repository: [mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-shadow](https://github.com/mossls-studio/mos-shadow), [mos-lightmix](https://github.com/mossls-studio/mos-lightmix); the installer and guides live in [mos-suite](https://github.com/mossls-studio/mos-suite), and Blur (`mos.blur`, `模糊/mos_模糊`) still lives in its local repository only. The four wasm plugins are built in four name×parameter combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`); Light Mix is a single external helper exe that localizes its names and parameter labels from the two settings in `mos-suite.json`.
 
-Build with `node <plugin>/build.js` for the wasm plugins, `cargo build --release` for the Light Mix helper, then `powershell -File suite/installer/build.ps1`. The installer embeds its payload, so the produced exe is standalone.
+Build with `node <plugin>/build.js` for the wasm plugins (Blur is Rust → wasm and builds the same way), `cargo build --release` for the Light Mix helper, then `powershell -File suite/installer/build.ps1`. The installer embeds its payload, so the produced exe is standalone.
 
 Install by running the installer or following `docs/en/Install-Guide.md`. The installer UI always follows the system language and only asks two things: the language of effect names (System / English) and the parameter language (System / 中文 / English).
 

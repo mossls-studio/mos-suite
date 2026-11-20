@@ -20,7 +20,7 @@ namespace MosSuite
             { "app.title", "MOS 套件" },
             { "close.tip", "关闭" },
             { "hero.title", "安装 MOS 效果套件" },
-            { "hero.body", "阴影、抖动、收缩、灯光混合，4 个 EffectCraft 效果。" },
+            { "hero.body", "阴影、抖动、收缩、灯光混合、模糊，5 个 EffectCraft 效果。" },
             { "lang.names", "效果名称" },
             { "lang.names.hint", "英文时效果栏里的分组名、效果名显示英文；跟随系统则使用系统语言。" },
             { "lang.params", "参数语言" },
@@ -48,7 +48,7 @@ namespace MosSuite
             { "done.title", "安装完成" },
             { "done.body", "重启 EffectCraft 后生效。想马上看到灯光混合，可在当前窗口执行 效果 ▸ 扫描效果辅助程序…" },
             { "unin.title", "卸载 MOS 套件？" },
-            { "unin.body", "会删除这 4 个效果和语言设置，不影响其他插件和工程文件。" },
+            { "unin.body", "会删除这 5 个效果和语言设置，不影响其他插件和工程文件。" },
             { "unin.done", "已卸载" },
             { "unin.failed", "卸载没有完成" },
             { "state.installed", "已安装 {0}" },
@@ -72,7 +72,7 @@ namespace MosSuite
             { "app.title", "MOS Suite" },
             { "close.tip", "Close" },
             { "hero.title", "Install the MOS effects suite" },
-            { "hero.body", "Shadow, Shake, Shrink and Light Mix — four EffectCraft effects." },
+            { "hero.body", "Shadow, Shake, Shrink, Light Mix and Blur — five EffectCraft effects." },
             { "lang.names", "Effect names" },
             { "lang.names.hint", "English shows English group and effect names in the Effects panel; System uses your language." },
             { "lang.params", "Parameter language" },
@@ -100,7 +100,7 @@ namespace MosSuite
             { "done.title", "Installation complete" },
             { "done.body", "Restart EffectCraft to load the effects. To show Light Mix right away, run Effects ▸ Scan Effect Helpers… in the open window." },
             { "unin.title", "Uninstall the MOS Suite?" },
-            { "unin.body", "Removes the four effects and their language settings. Other plug-ins and projects are not touched." },
+            { "unin.body", "Removes the five effects and their language settings. Other plug-ins and projects are not touched." },
             { "unin.done", "Uninstalled" },
             { "unin.failed", "Uninstall did not finish" },
             { "state.installed", "Installed {0}" },
@@ -169,6 +169,7 @@ namespace MosSuite
                 case "shadow": return en ? "mos_shadow" : "mos_阴影";
                 case "shake": return en ? "mos_shake" : "mos_抖动";
                 case "shrink": return en ? "mos_shrink" : "mos_收缩";
+                case "blur": return en ? "mos_blur" : "mos_模糊";
                 case "lightmix": return en ? "mos_lightmix" : "mos_灯光混合";
             }
             return id;
@@ -178,6 +179,7 @@ namespace MosSuite
         {
             bool en = lang == "en";
             if (group == "deform") return en ? "MOS Deform" : "MOS 形变";
+            if (group == "blur") return en ? "MOS Blur" : "MOS 模糊";
             return en ? "MOS VFX" : "MOS 视效";
         }
     }

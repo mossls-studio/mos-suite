@@ -1,4 +1,4 @@
-﻿# build.ps1 — build all four effects and the installer.
+﻿# build.ps1 — build all five effects and the installer.
 param(
     [switch]$SkipWasm,
     [switch]$SkipHelper
@@ -11,6 +11,7 @@ $mos = Split-Path -Parent $suite
 $shake = Join-Path $mos '形变\mos_shake'
 $shrink = Join-Path $mos '形变\mos_收缩'
 $shadow = Join-Path $mos 'vfx\mos_阴影'
+$blur = Join-Path $mos '模糊\mos_模糊'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
 
 function Require($path, $what) {
@@ -27,6 +28,9 @@ if (-not $SkipWasm) {
 
     Write-Host 'building mos_shadow (zh + en)...'
     Push-Location $shadow; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shadow build failed' } } finally { Pop-Location }
+
+    Write-Host 'building mos_blur (zh + en)...'
+    Push-Location $blur; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_blur build failed' } } finally { Pop-Location }
 }
 
 if (-not $SkipHelper) {

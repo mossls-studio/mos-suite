@@ -1,12 +1,12 @@
 ﻿# build.ps1 — assembles the payload and compiles the Material 3 installer with the
 # .NET Framework C# compiler that ships with Windows (no SDK, no runtime download).
 #
-# The payload carries every language combination of the three wasm effects
+# The payload carries every language combination of the four wasm effects
 # (plug-ins/<names>-<params>/<effect>.wasm); the installer copies the one that
 # matches the chosen "effect names" + "parameter language" settings.
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "1.1.0"
+    [string]$Version = "1.2.0"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,14 +26,16 @@ function Fail($message) {
 $shadow = Join-Path $mos 'vfx\mos_阴影'
 $shake = Join-Path $mos '形变\mos_shake'
 $shrink = Join-Path $mos '形变\mos_收缩'
+$blur = Join-Path $mos '模糊\mos_模糊'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
 
-# language combinations produced by the three plugin build.js files
+# language combinations produced by the four plugin build.js files
 $variants = @('zh-zh', 'zh-en', 'en-zh', 'en-en')
 $effects = @(
     @{ Root = $shadow; File = 'mos_shadow.wasm' },
     @{ Root = $shake;  File = 'mos_shake.wasm' },
-    @{ Root = $shrink; File = 'mos_shrink.wasm' }
+    @{ Root = $shrink; File = 'mos_shrink.wasm' },
+    @{ Root = $blur;   File = 'mos_blur.wasm' }
 )
 
 foreach ($v in $variants) {

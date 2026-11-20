@@ -44,6 +44,7 @@ namespace MosSuite
 
         private readonly List<ComponentRow> rows = new List<ComponentRow>();
         private readonly List<M3Text> groupLabels = new List<M3Text>();
+        private readonly List<string> groupIds = new List<string>();
         private M3ProgressBar bar;
         private M3Text statusLabel;
         private string errorText = "";
@@ -100,7 +101,7 @@ namespace MosSuite
             Theme.Init(dpiScale, uiLang == "zh");
             L10n.UiLang = uiLang;
             Font = Theme.BodyMedium;
-            ClientSize = new Size(Theme.Dp(760), Theme.Dp(800));
+            ClientSize = new Size(Theme.Dp(880), Theme.Dp(800));
             Rebuild();
         }
 
@@ -159,6 +160,7 @@ namespace MosSuite
 
             rows.Clear();
             groupLabels.Clear();
+            groupIds.Clear();
             bar = null;
             statusLabel = null;
             closeButton = null;
@@ -437,7 +439,7 @@ namespace MosSuite
             string names = L10n.ResolveNames(namesLanguage);
             for (int i = 0; i < groupLabels.Count; i++)
             {
-                groupLabels[i].Text = L10n.GroupName(i == 0 ? "deform" : "vfx", names);
+                groupLabels[i].Text = L10n.GroupName(groupIds[i], names);
             }
             foreach (ComponentRow row in rows)
             {
@@ -452,25 +454,37 @@ namespace MosSuite
             Widgets.Place(card, x, y, width, Theme.Dp(168));
             content.Controls.Add(card);
 
-            int colW = (width - Theme.Dp(48)) / 2;
+            // 16 dp padding on both sides and one 16 dp gutter between the three
+            // group columns.
+            int colW = (width - Theme.Dp(64)) / 3;
             int leftX = Theme.Dp(16);
-            int rightX = leftX + colW + Theme.Dp(16);
+            int midX = leftX + colW + Theme.Dp(16);
+            int rightX = midX + colW + Theme.Dp(16);
 
             string names = L10n.ResolveNames(namesLanguage);
             M3Text left = Widgets.Label(L10n.GroupName("deform", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
             Widgets.Place(left, leftX, Theme.Dp(14), colW, Theme.Dp(20));
             card.Controls.Add(left);
             groupLabels.Add(left);
+            groupIds.Add("deform");
 
-            M3Text right = Widgets.Label(L10n.GroupName("vfx", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
+            M3Text mid = Widgets.Label(L10n.GroupName("vfx", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
+            Widgets.Place(mid, midX, Theme.Dp(14), colW, Theme.Dp(20));
+            card.Controls.Add(mid);
+            groupLabels.Add(mid);
+            groupIds.Add("vfx");
+
+            M3Text right = Widgets.Label(L10n.GroupName("blur", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
             Widgets.Place(right, rightX, Theme.Dp(14), colW, Theme.Dp(20));
             card.Controls.Add(right);
             groupLabels.Add(right);
+            groupIds.Add("blur");
 
             AddRow(card, leftX, Theme.Dp(40), colW, "shake");
             AddRow(card, leftX, Theme.Dp(96), colW, "shrink");
-            AddRow(card, rightX, Theme.Dp(40), colW, "shadow");
-            AddRow(card, rightX, Theme.Dp(96), colW, "lightmix");
+            AddRow(card, midX, Theme.Dp(40), colW, "shadow");
+            AddRow(card, midX, Theme.Dp(96), colW, "lightmix");
+            AddRow(card, rightX, Theme.Dp(40), colW, "blur");
         }
 
         private void AddRow(M3Card card, int x, int y, int width, string id)

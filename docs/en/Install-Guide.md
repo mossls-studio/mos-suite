@@ -1,6 +1,6 @@
 # MOS Suite · Manual Installation Guide
 
-For EffectCraft. The suite ships four effects in two Effects-panel groups:
+For EffectCraft. The suite ships five effects in three Effects-panel groups:
 
 | Group | Effect | Effect ID | Version |
 | --- | --- | --- | --- |
@@ -8,12 +8,13 @@ For EffectCraft. The suite ships four effects in two Effects-panel groups:
 | MOS Deform | mos_shrink | mos.shrink | 1.3.7 |
 | MOS VFX | mos_shadow | mos.shadow | 0.6.2 |
 | MOS VFX | mos_lightmix | mos.lightwrap | 1.5.0 |
+| MOS Blur | mos_blur | mos.blur | 0.1.0 |
 
 Default install folder: `%APPDATA%\EffectCraft` (`C:\Users\<you>\AppData\Roaming\EffectCraft`).
 
 ## Option 1 — the installer (recommended)
 
-Run `MOS-Suite-Setup-1.1.0.exe`. The installer follows the system language on its own; there is no installer-language picker. It offers two language settings:
+Run `MOS-Suite-Setup-1.2.0.exe`. The installer follows the system language on its own; there is no installer-language picker. It offers two language settings:
 
 1. **Effect names** (System / English) — the language of the **group and effect names** in the Effects panel. "System" follows the Windows display language and falls back to English on non-Chinese systems.
 2. **Parameter language** (System / 中文 / English) — the language of **parameter names and popup options** inside the effect controls. "System" follows the system language and falls back to English when the suite has no build for it (Japanese, for example).
@@ -30,13 +31,14 @@ Quit EffectCraft completely, and end `effectcraft-helper-mos-lightmix.exe` if Li
 
 ### 2. Copy the files
 
-The installer payload carries the three wasm effects in four "names × parameters" combinations. Folder names are `<names>-<params>`: `zh-zh`, `zh-en`, `en-zh`, `en-en`. Pick your combination first (for example "names follow system = Chinese, parameters = English" is `zh-en`), then copy:
+The installer payload carries the four wasm effects in four "names × parameters" combinations. Folder names are `<names>-<params>`: `zh-zh`, `zh-en`, `en-zh`, `en-en`. Pick your combination first (for example "names follow system = Chinese, parameters = English" is `zh-en`), then copy:
 
 | Destination | Source |
 | --- | --- |
 | `Plug-ins\mos_shadow.wasm` | `plug-ins\<pair>\mos_shadow.wasm` |
 | `Plug-ins\mos_shake.wasm` | `plug-ins\<pair>\mos_shake.wasm` |
 | `Plug-ins\mos_shrink.wasm` | `plug-ins\<pair>\mos_shrink.wasm` |
+| `Plug-ins\mos_blur.wasm` | `plug-ins\<pair>\mos_blur.wasm` |
 | `helpers\effectcraft-helper-mos-lightmix.exe` | `helper\effectcraft-helper-mos-lightmix.exe` |
 | `Scripts\Startup\mos-load-helpers.jsx` | `scripts\mos-load-helpers.jsx` |
 | `mos-suite\manual\zh\安装说明.md` | `manual\zh\安装说明.md` |
@@ -51,7 +53,7 @@ Create `%APPDATA%\EffectCraft\mos-suite.json` (UTF-8, no BOM):
 ```json
 {
   "schema": 2,
-  "suiteVersion": "1.1.0",
+  "suiteVersion": "1.2.0",
   "namesLanguage": "system",
   "paramsLanguage": "system",
   "namesResolved": "en",
@@ -71,13 +73,13 @@ EffectCraft ▸ Settings ▸ Scripting & Expressions ▸ enable **Allow Scripts 
 
 ### 5. Verify
 
-Open the Effects panel: you should see **MOS Deform** and **MOS VFX** (or **MOS 形变 / MOS 视效** in Chinese). Drag one onto a layer to try it.
+Open the Effects panel: you should see **MOS Deform**, **MOS VFX** and **MOS Blur** (or **MOS 形变 / MOS 视效 / MOS 模糊** in Chinese). Drag one onto a layer to try it.
 
 ## Uninstall
 
 Quit EffectCraft, then delete:
 
-- `Plug-ins\mos_shadow.wasm`, `mos_shake.wasm`, `mos_shrink.wasm`
+- `Plug-ins\mos_shadow.wasm`, `mos_shake.wasm`, `mos_shrink.wasm`, `mos_blur.wasm`
 - `helpers\effectcraft-helper-mos-lightmix.exe`
 - `Scripts\Startup\mos-load-helpers.jsx`
 - the whole `mos-suite\` folder
@@ -91,6 +93,8 @@ If you used the installer, just reopen it and press **Uninstall**.
 
 **Light Mix picks the wrong background position.** The helper cannot read background-layer transforms — a known limitation. Pre-compose the background and use the comp as the background layer.
 
+**Blur on an adjustment layer shows no edge feathering.** An adjustment layer's mask is applied *after* the effect, so the wasm only sees a fully opaque buffer and cannot locate the mask edge: `Size` blurs evenly and `Edge Feather` produces no gradient. Put the effect on the normal layer below instead — that layer's alpha is the mask coverage. Also leave **Keep original opacity** off on adjustment layers, or the effect disappears entirely.
+
 **Replacing a wasm fails with access denied.** EffectCraft is still running; quit it fully and retry.
 
 **Names and parameters use different languages, or a language change does nothing.** Each wasm carries exactly one names+parameters combination, so either re-run the installer (it swaps the wasm) or replace the wasm with the matching `<pair>` build by hand; keep `namesResolved` / `paramsResolved` in `mos-suite.json` in sync and restart.
@@ -99,4 +103,4 @@ If you used the installer, just reopen it and press **Uninstall**.
 
 ## License
 
-The four effects are distributed under AGPL-3.0-or-later (see the suite repository `LICENSE`); if you run a modified version as a network service you must offer its source. Light Mix is an independent implementation of a light-wrap style effect and contains no code or assets from any third-party product.
+The five effects are distributed under AGPL-3.0-or-later (see the suite repository `LICENSE`); if you run a modified version as a network service you must offer its source. Light Mix is an independent implementation of a light-wrap style effect and contains no code or assets from any third-party product.
