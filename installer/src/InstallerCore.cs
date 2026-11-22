@@ -62,7 +62,7 @@ namespace MosSuite
                 return File.Exists(Path.Combine(Root, "helpers", InstallerCore.HelperExe));
             string wasm = "";
             if (id == "shake") wasm = "mos_shake.wasm";
-            else if (id == "shrink") wasm = "mos_shrink.wasm";
+            else if (id == "shrink") wasm = "ae_warp.wasm";
             else if (id == "shadow") wasm = "mos_shadow.wasm";
             else if (id == "blur") wasm = "mos_blur.wasm";
             return wasm.Length > 0 && File.Exists(Path.Combine(Root, "Plug-ins", wasm));
@@ -71,7 +71,7 @@ namespace MosSuite
 
     internal static class InstallerCore
     {
-        public const string SuiteVersion = "1.2.0";
+        public const string SuiteVersion = "1.3.0";
         public const string ConfigName = "mos-suite.json";
         public const string RecordDir = "mos-suite";
         public const string HelperExe = "effectcraft-helper-mos-lightmix.exe";
@@ -86,7 +86,7 @@ namespace MosSuite
         {
             List<ComponentInfo> list = new List<ComponentInfo>();
             list.Add(new ComponentInfo { Id = "shake", Wasm = "mos_shake.wasm", Version = "1.2.0", Group = "deform" });
-            list.Add(new ComponentInfo { Id = "shrink", Wasm = "mos_shrink.wasm", Version = "1.3.7", Group = "deform" });
+            list.Add(new ComponentInfo { Id = "shrink", Wasm = "ae_warp.wasm", Version = "1.3.0", Group = "deform" });
             list.Add(new ComponentInfo { Id = "shadow", Wasm = "mos_shadow.wasm", Version = "0.6.2", Group = "vfx" });
             list.Add(new ComponentInfo { Id = "blur", Wasm = "mos_blur.wasm", Version = "0.1.0", Group = "blur" });
             list.Add(new ComponentInfo { Id = "lightmix", Wasm = "", Version = "1.5.0", Group = "vfx" });
@@ -323,6 +323,7 @@ namespace MosSuite
                 List<string> files = new List<string>(state.Files);
                 string[] known = {
                     "Plug-ins\\mos_shadow.wasm", "Plug-ins\\mos_shake.wasm", "Plug-ins\\mos_shrink.wasm",
+                    "Plug-ins\\ae_warp.wasm",
                     "Plug-ins\\mos_blur.wasm",
                     "helpers\\" + HelperExe, "Scripts\\Startup\\" + StartupScript,
                     Path.Combine(RecordDir, "manual", "zh", "安装说明.md"),

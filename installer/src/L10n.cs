@@ -168,7 +168,9 @@ namespace MosSuite
             {
                 case "shadow": return en ? "mos_shadow" : "mos_阴影";
                 case "shake": return en ? "mos_shake" : "mos_抖动";
-                case "shrink": return en ? "mos_shrink" : "mos_收缩";
+                // The warp effect ships a single Chinese manifest (mos_收缩), so its
+                // name is the same in both name languages.
+                case "shrink": return "mos_收缩";
                 case "blur": return en ? "mos_blur" : "mos_模糊";
                 case "lightmix": return en ? "mos_lightmix" : "mos_灯光混合";
             }

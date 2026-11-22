@@ -1,4 +1,4 @@
-﻿# build.ps1 — build all five effects and the installer.
+# build.ps1 — build all five effects and the installer.
 param(
     [switch]$SkipWasm,
     [switch]$SkipHelper
@@ -23,8 +23,8 @@ if (-not $SkipWasm) {
     Write-Host 'building mos_shake (zh + en)...'
     Push-Location $shake; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shake build failed' } } finally { Pop-Location }
 
-    Write-Host 'building mos_shrink (zh + en)...'
-    Push-Location $shrink; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shrink build failed' } } finally { Pop-Location }
+    Write-Host 'building ae_warp (变形·白点)...'
+    Push-Location $shrink; try { & node build_warp.js; if ($LASTEXITCODE -ne 0) { throw 'ae_warp build failed' } } finally { Pop-Location }
 
     Write-Host 'building mos_shadow (zh + en)...'
     Push-Location $shadow; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shadow build failed' } } finally { Pop-Location }

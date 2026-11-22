@@ -1,4 +1,4 @@
-﻿# build.ps1 — assembles the payload and compiles the Material 3 installer with the
+# build.ps1 — assembles the payload and compiles the Material 3 installer with the
 # .NET Framework C# compiler that ships with Windows (no SDK, no runtime download).
 #
 # The payload carries every language combination of the four wasm effects
@@ -6,7 +6,7 @@
 # matches the chosen "effect names" + "parameter language" settings.
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "1.2.0"
+    [string]$Version = "1.3.0"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,7 +34,7 @@ $variants = @('zh-zh', 'zh-en', 'en-zh', 'en-en')
 $effects = @(
     @{ Root = $shadow; File = 'mos_shadow.wasm' },
     @{ Root = $shake;  File = 'mos_shake.wasm' },
-    @{ Root = $shrink; File = 'mos_shrink.wasm' },
+    @{ Root = $shrink; File = 'ae_warp.wasm' },
     @{ Root = $blur;   File = 'mos_blur.wasm' }
 )
 
