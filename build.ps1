@@ -9,7 +9,7 @@ $suite = $PSScriptRoot
 $mos = Split-Path -Parent $suite
 
 $shake = Join-Path $mos '形变\mos_shake'
-$shrink = Join-Path $mos '形变\mos_收缩'
+$warp = Join-Path $mos '形变\mos_变形白点'
 $shadow = Join-Path $mos 'vfx\mos_阴影'
 $blur = Join-Path $mos '模糊\mos_模糊'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
@@ -24,7 +24,7 @@ if (-not $SkipWasm) {
     Push-Location $shake; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shake build failed' } } finally { Pop-Location }
 
     Write-Host 'building ae_warp (变形·白点)...'
-    Push-Location $shrink; try { & node build_warp.js; if ($LASTEXITCODE -ne 0) { throw 'ae_warp build failed' } } finally { Pop-Location }
+    Push-Location $warp; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'ae_warp build failed' } } finally { Pop-Location }
 
     Write-Host 'building mos_shadow (zh + en)...'
     Push-Location $shadow; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_shadow build failed' } } finally { Pop-Location }

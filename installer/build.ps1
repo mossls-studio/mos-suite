@@ -25,7 +25,7 @@ function Fail($message) {
 
 $shadow = Join-Path $mos 'vfx\mos_阴影'
 $shake = Join-Path $mos '形变\mos_shake'
-$shrink = Join-Path $mos '形变\mos_收缩'
+$warp = Join-Path $mos '形变\mos_变形白点'
 $blur = Join-Path $mos '模糊\mos_模糊'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
 
@@ -34,7 +34,7 @@ $variants = @('zh-zh', 'zh-en', 'en-zh', 'en-en')
 $effects = @(
     @{ Root = $shadow; File = 'mos_shadow.wasm' },
     @{ Root = $shake;  File = 'mos_shake.wasm' },
-    @{ Root = $shrink; File = 'ae_warp.wasm' },
+    @{ Root = $warp;   File = 'ae_warp.wasm' },
     @{ Root = $blur;   File = 'mos_blur.wasm' }
 )
 
