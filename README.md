@@ -1,108 +1,115 @@
 # MOS 套件 / MOS Suite
 
-EffectCraft 的 5 个效果，合并成一个套件，并分成三个效果栏分组：
+EffectCraft 的 **8 个效果**，合并成一个套件（v1.4.0），在效果栏里分成四个分组：
 
-| 分组 Group | 效果 Effect | ID | 版本 Version | 源码 Source |
-| --- | --- | --- | --- | --- |
-| MOS 形变 / MOS Deform | 抖动 Shake | `mos.shake` | 1.2.0 | <https://github.com/mossls-studio/mos-shake> |
-| MOS 形变 / MOS Deform | 变形·白点 Warp | `mos.ae.warp` | 1.3.0 | <https://github.com/mossls-studio/mos-shrink> |
-| MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | 0.6.2 | <https://github.com/mossls-studio/mos-shadow> |
-| MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 1.5.0 | <https://github.com/mossls-studio/mos-lightmix> |
-| MOS 模糊 / MOS Blur | 模糊 Blur | `mos.blur` | 0.1.0 | 本地仓库，尚未推送 |
+| 分组 Group | 效果 Effect | ID | 类型 Type | 版本 Version | 源码 Source |
+| --- | --- | --- | --- | --- | --- |
+| MOS 形变 / MOS Deform | 抖动 Shake | `mos.shake` | WASM | 1.2.0 | <https://github.com/mossls-studio/mos-shake> |
+| MOS 形变 / MOS Deform | 变形·白点 Warp | `mos.ae.warp` | WASM | 1.3.0 | <https://github.com/mossls-studio/mos-shrink> |
+| MOS 液态 / MOS Liquid | 涟漪 Ripple | `mos.ripple` | WASM | 1.1.0 | <https://github.com/mossls-studio/mos-ripple> |
+| MOS 液态 / MOS Liquid | 雨滴 Rain | `mos.rain` | 外部助手 Helper | 5.0.0 | <https://github.com/mossls-studio/mos-rain> |
+| MOS 液态 / MOS Liquid | 透镜 Lens | `mos.lens` | 外部助手 Helper | 2.0.0 | <https://github.com/mossls-studio/mos-lens> |
+| MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | WASM | 0.6.2 | <https://github.com/mossls-studio/mos-shadow> |
+| MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 外部助手 Helper | 1.5.0 | <https://github.com/mossls-studio/mos-lightmix> |
+| MOS 模糊 / MOS Blur | 模糊 Blur | `mos.blur` | WASM | 0.1.0 | 本地仓库 `模糊/mos_模糊` |
 
-开源地址（AGPL-3.0-or-later，各自独立仓库，安装器与说明在套件仓库）：
+开源地址（AGPL-3.0-or-later，各自独立仓库，安装器、合集发布包与双语说明在套件仓库）：
 
 | 仓库 Repository | 内容 Contents |
 | --- | --- |
-| <https://github.com/mossls-studio/mos-suite> | 套件：Material 3 安装器源码、双语安装说明、发布产物 |
-| <https://github.com/mossls-studio/mos-shadow> | 阴影 `mos.shadow`（wasm，api 2，含源码 `src/mos_shadow.wat` 与构建脚本） |
-| <https://github.com/mossls-studio/mos-shake> | 抖动 `mos.shake`（wasm，api 1） |
-| <https://github.com/mossls-studio/mos-shrink> | 变形·白点 `mos.ae.warp`（wasm，api 1，源码 `ae_warp/`） |
+| <https://github.com/mossls-studio/mos-suite> | 套件：Material Design 3 Expressive 分步安装器、手动安装包整合与双语说明 |
+| <https://github.com/mossls-studio/mos-ripple> | 涟漪 `mos.ripple`（WASM，API 2，波峰侧面高光与折射） |
+| <https://github.com/mossls-studio/mos-rain> | 雨滴 `mos.rain`（Rust 外部助手，API 2，重力水滴 + 色散 + 自定义贴图图层） |
+| <https://github.com/mossls-studio/mos-lens> | 透镜 `mos.lens`（Rust 外部助手，API 2，6 种形状 + 中心放大 + 镜内过渡羽化 + 自定义图层） |
+| <https://github.com/mossls-studio/mos-shadow> | 阴影 `mos.shadow`（WASM，API 2，含源码 `src/mos_shadow.wat`） |
+| <https://github.com/mossls-studio/mos-shake> | 抖动 `mos.shake`（WASM，API 1） |
+| <https://github.com/mossls-studio/mos-shrink> | 变形·白点 `mos.ae.warp`（WASM，API 1，源码 `ae_warp/`） |
 | <https://github.com/mossls-studio/mos-lightmix> | 灯光混合 `mos.lightwrap`（Rust 外部助手，含 `helper/src/*.rs`） |
-| 模糊 `mos.blur` | 本地仓库 `模糊\mos_模糊`（Rust → wasm，尚未推送远端） |
+| 模糊 `mos.blur` | 本地仓库 `模糊/mos_模糊`（Rust → WASM） |
 
-四个 wasm 插件各带 4 份构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`），其中变形·白点只有中文清单，四份是同一份字节；灯光混合是外部助手，同一份 exe 按 `mos-suite.json` 里的设置分别决定分组/效果名和参数名的语言。
+5 个 WASM 插件各带 4 份语言构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`），其中变形·白点只有中文清单；3 个外部助手（雨滴、透镜、灯光混合）为原生可执行文件，运行时读取 `mos-suite.json` 中的设置分别本地化分组/效果名与参数控件语言。
 
-| 中文界面 | English names |
+## 安装器界面截图（Material Design 3 Expressive 分步向导）
+
+| 1. 欢迎 Welcome | 2. 语言设置 Language |
 | --- | --- |
-| ![安装器](docs/screenshots/setup-zh.png) | ![English names](docs/screenshots/setup-en.png) |
-| ![安装完成](docs/screenshots/setup-done.png) | ![已安装](docs/screenshots/setup-installed.png) |
+| ![欢迎](docs/screenshots/setup-welcome.png) | ![语言设置](docs/screenshots/setup-language.png) |
+| **3. 选择效果 Effects** | **4. 安装位置与摘要 Location** |
+| ![选择效果](docs/screenshots/setup-effects.png) | ![安装位置](docs/screenshots/setup-location.png) |
+
+| English UI (switchable in-app via bottom-left `中文 / EN`) |
+| --- |
+| ![English UI](docs/screenshots/setup-en.png) |
 
 ## 目录
 
-```
+```text
 mos/
-  suite/                本目录：安装器、安装说明、发布产物
-    installer/          安装器源码（C# / .NET Framework 4，无 SDK 依赖）
-      assets/           顶栏 logo（png + ico）
-    docs/zh, docs/en    手动安装说明（会装进 <root>\mos-suite\manual\）
-    release/            构建产物：MOS-Suite-Setup-1.3.0.exe
-  vfx/mos_阴影/           mos.shadow（wasm，api 2）
-  vfx/mos_灯光混合/        mos.lightwrap（Rust 外部助手）
-  形变/mos_shake/         mos.shake（wasm，api 1）
-  形变/mos_收缩/           mos.ae.warp 变形·白点（wasm，api 1；mos.shrink 源码仍在此仓库）
-  模糊/mos_模糊/           mos.blur（wasm，api 2，Rust 源码 src/lib.rs）
+  suite/                    本目录：Material 3 分步安装器、双语文档与统一发布包
+    build.ps1               一键编译全部 8 个效果、安装器与 release ZIP
+    installer/              安装器源码（C# / .NET Framework 4，60fps 弹簧动效引擎，无 SDK 依赖）
+      assets/               顶栏 logo（png + ico）
+      src/                  Motion.cs、Theme.cs、Widgets.cs、InstallerForm.cs、InstallerCore.cs 等
+    docs/zh, docs/en        中英双语手动安装说明与界面截图
+    release/                发布产物：MOS-Suite-1.4.0.zip（含 Setup .exe + manual/ 手动版 + 文档）与独立 .exe
+  vfx/mos_阴影/             mos.shadow（WASM，API 2）
+  vfx/mos_灯光混合/         mos.lightwrap（Rust 外部助手）
+  形变/mos_shake/           mos.shake（WASM，API 1）
+  形变/mos_变形白点/         mos.ae.warp（WASM，API 1）
+  形变/mos_液态/            mos_涟漪（WASM）、mos_雨滴（Rust 外部助手）、mos_透镜（Rust 外部助手）
+  模糊/mos_模糊/            mos.blur（WASM，API 2）
 ```
 
 ## 构建
 
-前提：Windows、Node.js（各 wasm 插件目录里已带 `wabt` 依赖）、Rust 工具链（灯光混合与模糊需要）、.NET Framework 4（Windows 自带 `csc.exe`）。不需要 Visual Studio、不需要 .NET SDK。
+前提：Windows、Node.js（各 WASM 插件自带 `wabt` 依赖）、Rust 工具链（3 个外部助手与模糊需要）、.NET Framework 4（Windows 自带 `csc.exe`，不需要 Visual Studio 或 .NET SDK）。
 
 ```powershell
-# 1) 四个 wasm 插件：默认各出 4 种语言组合到 dist\<名称语言>-<参数语言>\
-node 形变\mos_shake\build.js
-node 形变\mos_收缩\build_warp.js
-node vfx\mos_阴影\build.js
-node 模糊\mos_模糊\build.js
+# 推荐：从 suite 根目录一键编译 8 个效果、安装器 exe 与含手动安装版的 ZIP 发布包
+powershell -ExecutionPolicy Bypass -File suite\build.ps1
 
-# 2) 灯光混合助手（Rust）
-cargo build --release --manifest-path vfx\mos_灯光混合\helper\Cargo.toml
-# 把 target\release\effectcraft-helper-mos-lightmix.exe 复制到 vfx\mos_灯光混合\dist\
-
-# 3) 安装器
+# 如插件产物已就绪，仅重新编译安装器与打包发布 ZIP
 powershell -ExecutionPolicy Bypass -File suite\installer\build.ps1
 ```
 
-产物在 `suite\release\MOS-Suite-Setup-1.3.0.exe`。安装器把 payload 以 zip 资源嵌进 exe，不需要旁置文件。
+发布产物输出到 `suite\release\`：
+- `MOS-Suite-1.4.0.zip`（包含 `MOS-Suite-Setup-1.4.0.exe` + `manual/` 手动安装目录 + 双语 `docs/` 说明）
+- `MOS-Suite-Setup-1.4.0.exe`（独立单文件安装程序）
 
-## 安装
+## 安装与卸载
 
-双击安装器，或看 `docs/zh/安装说明.md` / `docs/en/Install-Guide.md` 手动安装。安装器界面跟随系统语言，只提供两组设置：效果名称的语言（跟随系统 / English）和参数语言（跟随系统 / 中文 / English）。
+提供两种安装方式：
+1. **图形化安装器**：双击 `MOS-Suite-Setup-1.4.0.exe`，按左侧步骤完成语言配置、效果勾选与位置确认（界面左下角可随时切换 `中文 / EN`）。
+2. **手动安装（无需运行 `.exe`）**：打开压缩包内 `manual/` 目录，参照 [docs/zh/安装说明.md](docs/zh/安装说明.md) 或 [docs/en/Install-Guide.md](docs/en/Install-Guide.md) 将文件复制到 `%APPDATA%\EffectCraft\`。
 
-静默安装参数：
+静默安装 / 卸载参数：
 
 ```powershell
-MOS-Suite-Setup-1.3.0.exe /S /names=en /params=zh /dir="%APPDATA%\EffectCraft"
-MOS-Suite-Setup-1.3.0.exe /S /uninstall
+MOS-Suite-Setup-1.4.0.exe /S /names=en /params=zh /dir="%APPDATA%\EffectCraft"
+MOS-Suite-Setup-1.4.0.exe /S /uninstall
 ```
 
-- `/names=` `system` | `en`，`/params=` `system` | `zh` | `en`；旧参数 `/lang=`、`/effects=` 仍可用（同时设置两项）。
+- `/names=` `system` | `en`，`/params=` `system` | `zh` | `en`；旧参数 `/effects=` 仍可用（同时设置两项）。
 - 日志写到 `%TEMP%\mos-suite-setup.log`。
 
-## 语言
+## 语言设置格式（`mos-suite.json`）
 
-- 安装器界面：永远跟随系统（`CultureInfo.CurrentUICulture`），不提供选择。
-- 效果名称：分组名、效果名、描述用 `namesLanguage`（`system` / `en`）；跟随系统时非中文系统按英文。
-- 参数语言：参数名和下拉选项用 `paramsLanguage`（`system` / `zh` / `en`）；跟随系统且套件没有对应语言时按英文。
-- 安装器把两项设置写进 `%APPDATA%\EffectCraft\mos-suite.json`（`schema: 2`）的 `namesLanguage` / `paramsLanguage`，并把最终生效的 `namesResolved` / `paramsResolved` 一起写进去——wasm 按组合挑选，灯光混合助手读这两个 resolved 值。
-- 旧版的单键 `effectsLanguage` 仍能识别。
+- 效果名称：分组名、效果名、描述由 `namesLanguage`（`system` / `en`）决定；选 `system` 时非中文系统回退英文。
+- 参数语言：参数名与下拉选项由 `paramsLanguage`（`system` / `zh` / `en`）决定；没有对应构建时回退英文。
+- 安装器会把设置与解析后的实际语言（`namesResolved` / `paramsResolved`）写入 `%APPDATA%\EffectCraft\mos-suite.json`（`schema: 2`），三个外部助手读取这两个字段完成双语本地化。
 
 ## 许可
 
-AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本），见 `LICENSE`。把改动后的版本作为网络服务提供给他人时，需要按该许可证公开对应源码。灯光混合是 Light Wrap 类效果的独立实现，不含第三方代码或素材；发布时不要附带 `_ref` 里的参考文档。
+AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本），见 `LICENSE`。
 
 ---
 
 # MOS Suite (English)
 
-Five EffectCraft effects, shipped as one suite in three Effects-panel groups (table above). Each effect has its own AGPL-3.0-or-later repository: [mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink) (the warp effect `mos.ae.warp`, a single Chinese manifest), [mos-shadow](https://github.com/mossls-studio/mos-shadow), [mos-lightmix](https://github.com/mossls-studio/mos-lightmix); the installer and guides live in [mos-suite](https://github.com/mossls-studio/mos-suite), and Blur (`mos.blur`, `模糊/mos_模糊`) still lives in its local repository only. The four wasm plugins are built in four name×parameter combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`); the warp effect has one manifest, so all four folders carry the same bytes. Light Mix is a single external helper exe that localizes its names and parameter labels from the two settings in `mos-suite.json`.
+Eight EffectCraft effects bundled into one suite (`v1.4.0`) across four Effects-panel groups (see tables above). Seven effects are open-source under **AGPL-3.0-or-later** in their own repositories ([mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-ripple](https://github.com/mossls-studio/mos-ripple), [mos-rain](https://github.com/mossls-studio/mos-rain), [mos-lens](https://github.com/mossls-studio/mos-lens), [mos-shadow](https://github.com/mossls-studio/mos-shadow), and [mos-lightmix](https://github.com/mossls-studio/mos-lightmix)), while installer sources, unified release bundles, and bilingual manuals live in [mos-suite](https://github.com/mossls-studio/mos-suite).
 
-Build with `node <plugin>/build.js` for the wasm plugins (the warp effect uses `node 形变/mos_收缩/build_warp.js`; Blur is Rust → wasm and builds the same way), `cargo build --release` for the Light Mix helper, then `powershell -File suite/installer/build.ps1`. The installer embeds its payload, so the produced exe is standalone.
+The five WASM plug-ins ship in four `names × parameters` combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`; Warp ships a single Chinese manifest). The three native External Effect Helpers (`mos_rain`, `mos_lens`, `mos_lightmix`) read `namesResolved` / `paramsResolved` from `%APPDATA%\EffectCraft\mos-suite.json` (`schema: 2`) to localize effect names and parameter controls independently.
 
-Install by running the installer or following `docs/en/Install-Guide.md`. The installer UI always follows the system language and only asks two things: the language of effect names (System / English) and the parameter language (System / 中文 / English).
+Build everything from the workspace root with `powershell -ExecutionPolicy Bypass -File suite\build.ps1`, or repackage only the installer and unified release ZIP (`MOS-Suite-1.4.0.zip`) with `suite\installer\build.ps1`. The Material Design 3 Expressive step-by-step installer embeds all binaries cleanly, supports instant in-app `中文 / EN` UI switching, and the release ZIP additionally includes a ready-to-copy `manual/` folder + bilingual guides for users who prefer manual installation without running `.exe`.
 
-Silent install: `/S /names=en /params=zh /dir="..."`, `/S /uninstall`; `/names=` is `system` | `en`, `/params=` is `system` | `zh` | `en`, and the legacy `/lang=` / `/effects=` still set both. Log in `%TEMP%\mos-suite-setup.log`.
-
-The installer writes `namesLanguage` / `paramsLanguage` plus the resolved `namesResolved` / `paramsResolved` into `%APPDATA%\EffectCraft\mos-suite.json` (`schema: 2`); the wasm is chosen by the pair and the helper localizes itself from the resolved values.
-
-AGPL-3.0-or-later, see `LICENSE`. If you offer a modified version to others over a network, you must publish the corresponding source under the same license. Light Mix is an independent Light Wrap style effect and contains no third-party code or assets. Do not publish the reference documents in `_ref`.
+Silent install/uninstall: `/S /names=en /params=zh /dir="..."` and `/S /uninstall` (log at `%TEMP%\mos-suite-setup.log`). Distributed under **AGPL-3.0-or-later**; see `LICENSE`.
