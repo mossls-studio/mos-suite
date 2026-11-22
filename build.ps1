@@ -1,4 +1,4 @@
-# build.ps1 — build all five effects and the installer.
+﻿# build.ps1 — build all eight effects, the M3 installer, and the unified release ZIP.
 param(
     [switch]$SkipWasm,
     [switch]$SkipHelper
@@ -8,11 +8,14 @@ $ErrorActionPreference = 'Stop'
 $suite = $PSScriptRoot
 $mos = Split-Path -Parent $suite
 
-$shake = Join-Path $mos '形变\mos_shake'
-$warp = Join-Path $mos '形变\mos_变形白点'
-$shadow = Join-Path $mos 'vfx\mos_阴影'
-$blur = Join-Path $mos '模糊\mos_模糊'
+$shake    = Join-Path $mos '形变\mos_shake'
+$warp     = Join-Path $mos '形变\mos_变形白点'
+$shadow   = Join-Path $mos 'vfx\mos_阴影'
+$blur     = Join-Path $mos '模糊\mos_模糊'
+$ripple   = Join-Path $mos '形变\mos_液态\mos_涟漪'
 $lightmix = Join-Path $mos 'vfx\mos_灯光混合'
+$rain     = Join-Path $mos '形变\mos_液态\mos_雨滴'
+$lens     = Join-Path $mos '形变\mos_液态\mos_透镜'
 
 function Require($path, $what) {
     if (-not (Test-Path $path)) { throw "$what not found: $path" }
@@ -31,6 +34,9 @@ if (-not $SkipWasm) {
 
     Write-Host 'building mos_blur (zh + en)...'
     Push-Location $blur; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_blur build failed' } } finally { Pop-Location }
+
+    Write-Host 'building mos_ripple (zh + en)...'
+    Push-Location $ripple; try { & node build.js; if ($LASTEXITCODE -ne 0) { throw 'mos_ripple build failed' } } finally { Pop-Location }
 }
 
 if (-not $SkipHelper) {
@@ -41,23 +47,30 @@ if (-not $SkipHelper) {
     }
     if (-not $cargo) { throw 'cargo not found; install the Rust toolchain or pass -SkipHelper' }
 
-    Write-Host 'building the Light Mix helper...'
-    $manifest = Join-Path $lightmix 'helper\Cargo.toml'
-    Require $manifest 'Light Mix Cargo.toml'
-    # MinGW's ld cannot read dependency paths containing non-ASCII characters,
-    # so the helper builds into a temp target directory.
-    $targetDir = Join-Path $env:TEMP 'mos-lightmix-target'
-    & cargo build --release --manifest-path $manifest --target-dir $targetDir
-    if ($LASTEXITCODE -ne 0) { throw 'Light Mix helper build failed' }
-    $built = Join-Path $targetDir 'release\effectcraft-helper-mos-lightmix.exe'
-    Require $built 'built helper'
-    Copy-Item $built (Join-Path $lightmix 'dist\effectcraft-helper-mos-lightmix.exe') -Force
-    Write-Host "helper -> $(Join-Path $lightmix 'dist\effectcraft-helper-mos-lightmix.exe')"
+    $helperDefs = @(
+        @{ Name = 'Light Mix'; Root = $lightmix; Exe = 'effectcraft-helper-mos-lightmix.exe'; Target = 'mos-lightmix-target' },
+        @{ Name = 'Rain';      Root = $rain;     Exe = 'effectcraft-helper-mos-rain.exe';     Target = 'mos-rain-target' },
+        @{ Name = 'Lens';      Root = $lens;     Exe = 'effectcraft-helper-mos-lens.exe';     Target = 'mos-lens-target' }
+    )
+    foreach ($h in $helperDefs) {
+        Write-Host "building the $($h.Name) helper..."
+        $manifest = Join-Path $h.Root 'helper\Cargo.toml'
+        Require $manifest "$($h.Name) Cargo.toml"
+        $targetDir = Join-Path $env:TEMP $h.Target
+        & cargo build --release --manifest-path $manifest --target-dir $targetDir
+        if ($LASTEXITCODE -ne 0) { throw "$($h.Name) helper build failed" }
+        $built = Join-Path $targetDir "release\$($h.Exe)"
+        Require $built "built $($h.Name) helper"
+        Copy-Item $built (Join-Path $h.Root "dist\$($h.Exe)") -Force
+        Write-Host "helper -> $(Join-Path $h.Root "dist\$($h.Exe)")"
+    }
 }
 
-Write-Host 'building the installer...'
+Write-Host 'building the installer & unified release archive...'
 & (Join-Path $suite 'installer\build.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'installer build failed' }
 
 Write-Host ''
-Write-Host (Get-ChildItem (Join-Path $suite 'release') -Filter *.exe | ForEach-Object { "release: $($_.FullName) ($($_.Length) bytes)" })
+Get-ChildItem (Join-Path $suite 'release') | Where-Object { $_.Extension -in @('.exe', '.zip') } | ForEach-Object {
+    Write-Host ("release: {0} ({1:N0} bytes)" -f $_.FullName, $_.Length)
+}

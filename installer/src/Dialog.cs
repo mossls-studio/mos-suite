@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 MOSSLS
 
-// Dialog.cs — Material 3 confirmation dialog (28dp corners, surface container high).
+// Dialog.cs — Material Design 3 confirmation dialog (28dp corners, SurfaceHigh container).
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -14,8 +14,6 @@ namespace MosSuite
     {
         private readonly string titleText;
         private readonly string bodyText;
-        private readonly string cancelText;
-        private readonly string confirmText;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
@@ -24,8 +22,6 @@ namespace MosSuite
         {
             titleText = title;
             bodyText = body;
-            cancelText = cancel;
-            confirmText = confirm;
 
             AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.None;
@@ -34,13 +30,13 @@ namespace MosSuite
             DoubleBuffered = true;
             KeyPreview = true;
             BackColor = Theme.SurfaceHigh;
-            ClientSize = new Size(Theme.Dp(440), Theme.Dp(228));
+            ClientSize = new Size(Theme.Dp(440), Theme.Dp(232));
             Padding = new Padding(0);
 
             int y = ClientSize.Height - Theme.Dp(24) - Theme.Dp(40);
             M3Button cancelButton = new M3Button();
             cancelButton.Style = M3ButtonStyle.Text;
-            cancelButton.Text = cancelText;
+            cancelButton.Text = cancel;
             cancelButton.BackColor = Theme.SurfaceHigh;
             cancelButton.Height = Theme.Dp(40);
             cancelButton.FitWidth();
@@ -49,7 +45,7 @@ namespace MosSuite
 
             M3Button confirmButton = new M3Button();
             confirmButton.Style = M3ButtonStyle.Danger;
-            confirmButton.Text = confirmText;
+            confirmButton.Text = confirm;
             confirmButton.BackColor = Theme.SurfaceHigh;
             confirmButton.Height = Theme.Dp(40);
             confirmButton.FitWidth();
@@ -57,10 +53,7 @@ namespace MosSuite
             confirmButton.Click += delegate { DialogResult = DialogResult.OK; Close(); };
             Controls.Add(confirmButton);
 
-            // Both actions sit bottom-right, cancel first — the earlier build pinned cancel
-            // to the left edge, which read like a third, unrelated action.
             cancelButton.Location = new Point(confirmButton.Left - Theme.Dp(8) - cancelButton.Width, y);
-
             cancelButton.Focus();
         }
 
@@ -81,7 +74,7 @@ namespace MosSuite
             if (Width > 0 && Height > 0)
             {
                 Region old = Region;
-                using (GraphicsPath path = Theme.RoundPath(new RectangleF(0, 0, Width, Height), Theme.Dp(Theme.RadiusDialog)))
+                using (GraphicsPath path = Theme.RoundPath(new RectangleF(0, 0, Width, Height), Theme.Dp(Theme.RadiusExtraLarge)))
                 {
                     Region = new Region(path);
                 }

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 MOSSLS
 
-// InstallerForm.cs — the Material 3 installer window (dark scheme, system UI language).
+// InstallerForm.cs — Material Design 3 Expressive step-by-step wizard installer.
+// Features Expanded Navigation Rail with spring-sliding active pill, Shared Axis X
+// bitmap-composited page transitions, Connected Button Groups, animated effect cards,
+// and animated completion feedback.
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
-using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -18,55 +20,65 @@ namespace MosSuite
 {
     internal sealed class InstallerForm : Form
     {
-        private enum Mode
-        {
-            Configure,
-            Working,
-            Done,
-            Error
-        }
+        private enum InstallOutcome { Working, Done, Error }
 
         private readonly float dpiScale;
-        private Mode mode = Mode.Configure;
-        private bool working;
-
-        // The installer UI always uses the system language.
-        private readonly string uiLang = L10n.SystemLanguage();
-
-        // Two independent effect languages: what the Effects panel calls things,
-        // and what the effect controls say.
-        private string namesLanguage = "system";   // "system" | "en"
-        private string paramsLanguage = "system";  // "system" | "zh" | "en"
-
+        private string uiLang = L10n.SystemLanguage();
+        private string namesLanguage = "system";
+        private string paramsLanguage = "system";
         private string root = InstallerCore.DefaultRoot();
+
         private readonly List<ComponentInfo> components = InstallerCore.Components();
         private InstallState state = new InstallState();
 
-        private readonly List<ComponentRow> rows = new List<ComponentRow>();
-        private readonly List<M3Text> groupLabels = new List<M3Text>();
-        private readonly List<string> groupIds = new List<string>();
-        private M3ProgressBar bar;
-        private M3Text statusLabel;
+        // Wizard step: 0 Welcome, 1 Language, 2 Effects, 3 Location, 4 Install/Result
+        private int step = 0;
+        private int maxUnlocked = 3;
+        private InstallOutcome outcome = InstallOutcome.Working;
+        private bool working = false;
+        private bool lastWasUninstall = false;
+        private int lastInstalledCount = 0;
+        private bool lastInstalledHelper = false;
         private string errorText = "";
-        private string doneTitle = "";
-        private string doneBody = "";
 
-        private M3Text pathLabel;
-        private M3Text destHint;
+        // Chrome & layout panels
+        private M3NavRail rail;
+        private M3ConnectedButtonGroup uiLangToggle;
         private Panel topBar;
-        private Panel content;
-        private Panel footer;
+        private M3IconButton minButton;
         private M3IconButton closeButton;
+        private TransitionStage stage;
+        private Panel footer;
+        private M3Button backButton;
+        private M3Button secondaryButton;
         private M3Button primaryButton;
-        private M3Button uninstallButton;
-        private M3Text footerState;
 
-        public InstallerForm() : this(null, null, null)
-        {
-        }
+        // Live references inside active page
+        private M3Text langPreviewValue;
+        private M3Text effectsCountChip;
+        private M3Button toggleAllBtn;
+        private readonly List<M3EffectCard> effectCards = new List<M3EffectCard>();
+        private M3Text pathValueLabel;
+        private M3Text pathStatusLabel;
+        private M3ProgressBar progressBar;
+        private M3Text statusLabel;
+        private M3Spinner spinner;
 
-        // Optional command-line overrides: /names= /params= /dir= also work for the
-        // GUI, which makes scripted screenshots and pre-configured runs possible.
+        private const int RailW = 220;
+        private const int TopH = 56;
+        private const int FooterH = 76;
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        public InstallerForm() : this(null, null, null) { }
+
         public InstallerForm(string startNames, string startParams, string startRoot)
         {
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
@@ -77,14 +89,10 @@ namespace MosSuite
             Text = "MOS Suite";
             KeyPreview = true;
             DoubleBuffered = true;
-            BackColor = Theme.Surface;
             Icon = SystemIcons.Application;
 
             float scale = 1f;
-            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
-            {
-                scale = g.DpiX / 96f;
-            }
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero)) scale = g.DpiX / 96f;
             if (scale < 1f) scale = 1f;
             dpiScale = scale;
 
@@ -100,21 +108,13 @@ namespace MosSuite
 
             Theme.Init(dpiScale, uiLang == "zh");
             L10n.UiLang = uiLang;
+            BackColor = Theme.Surface;
             Font = Theme.BodyMedium;
-            ClientSize = new Size(Theme.Dp(880), Theme.Dp(800));
-            Rebuild();
+            ClientSize = new Size(Theme.Dp(840), Theme.Dp(592));
+
+            BuildShell();
+            ShowStep(0, 0, false);
         }
-
-        // ---------------- window chrome ----------------
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
-        [DllImport("user32.dll")]
-        private static extern bool ReleaseCapture();
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr SendMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
 
         protected override CreateParams CreateParams
         {
@@ -122,7 +122,7 @@ namespace MosSuite
             {
                 CreateParams cp = base.CreateParams;
                 cp.ClassStyle |= 0x20000;   // CS_DROPSHADOW
-                cp.ExStyle |= 0x02000000;   // WS_EX_COMPOSITED: paint whole window per frame, no flash
+                cp.ExStyle |= 0x02000000;   // WS_EX_COMPOSITED
                 return cp;
             }
         }
@@ -148,86 +148,125 @@ namespace MosSuite
             catch { }
         }
 
-        // ---------------- build ----------------
+        // ---------------- Shell ----------------
 
-        private void Rebuild()
+        private void BuildShell()
         {
             SuspendLayout();
-            List<Control> old = new List<Control>();
-            foreach (Control c in Controls) old.Add(c);
             Controls.Clear();
-            foreach (Control c in old) c.Dispose();
 
-            rows.Clear();
-            groupLabels.Clear();
-            groupIds.Clear();
-            bar = null;
-            statusLabel = null;
-            closeButton = null;
-            primaryButton = null;
-            uninstallButton = null;
-            footerState = null;
-            pathLabel = null;
-            destHint = null;
+            int railW = Theme.Dp(RailW);
+            int topH = Theme.Dp(TopH);
+            int footH = Theme.Dp(FooterH);
+            int rightW = ClientSize.Width - railW;
+            int stageH = ClientSize.Height - topH - footH;
 
-            Theme.Init(dpiScale, uiLang == "zh");
-            L10n.UiLang = uiLang;
-            Font = Theme.BodyMedium;
-            BackColor = Theme.Surface;
+            // Left M3 Expanded Navigation Rail
+            rail = new M3NavRail();
+            rail.SetBounds(0, 0, railW, ClientSize.Height);
+            rail.MaxUnlockedIndex = maxUnlocked;
+            rail.StepClicked += OnRailStepClicked;
+            rail.MouseDown += delegate(object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left && e.Y < Theme.Dp(88)) DragWindow(); };
+            Controls.Add(rail);
 
-            content = new Panel();
-            content.BackColor = Theme.Surface;
-            content.AutoScroll = false;
+            // UI Language quick toggle pinned at bottom of rail
+            uiLangToggle = new M3ConnectedButtonGroup();
+            uiLangToggle.Compact = true;
+            uiLangToggle.Values = new string[] { "zh", "en" };
+            uiLangToggle.Labels = new string[] { "中文", "EN" };
+            uiLangToggle.Selected = uiLang;
+            uiLangToggle.BackColor = Theme.SurfaceLow;
+            uiLangToggle.SetBounds(Theme.Dp(16), ClientSize.Height - Theme.Dp(52), railW - Theme.Dp(32), Theme.Dp(32));
+            uiLangToggle.SnapState();
+            uiLangToggle.SelectionChanged += OnUiLangChanged;
+            rail.Controls.Add(uiLangToggle);
 
+            // Right Top Bar
             topBar = new Panel();
             topBar.BackColor = Theme.Surface;
+            topBar.SetBounds(railW, 0, rightW, topH);
             topBar.Paint += PaintTopBar;
-            topBar.MouseDown += OnTopBarMouseDown;
-
-            footer = new Panel();
-            footer.BackColor = Theme.Surface;
-            footer.Paint += PaintFooter;
-
-            Controls.Add(content);
+            topBar.MouseDown += delegate(object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) DragWindow(); };
             Controls.Add(topBar);
-            Controls.Add(footer);
-            // Explicit bounds: the form is built before its handle exists, so Dock
-            // layout has not distributed the space yet when children are placed.
-            topBar.SetBounds(0, 0, ClientSize.Width, Theme.Dp(64));
-            footer.SetBounds(0, ClientSize.Height - Theme.Dp(88), ClientSize.Width, Theme.Dp(88));
-            content.SetBounds(0, Theme.Dp(64), ClientSize.Width, ClientSize.Height - Theme.Dp(64) - Theme.Dp(88));
 
-            BuildTopBarChildren();
-            BuildModeContent();
-            BuildFooterChildren();
-            ResumeLayout(true);
-
-            Invalidate(true);
-        }
-
-        private void OnTopBarMouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left) DragWindow();
-        }
-
-        private void BuildTopBarChildren()
-        {
             closeButton = new M3IconButton();
             closeButton.Icon = M3IconButton.Glyph.Close;
-            closeButton.Size = new Size(Theme.Dp(40), Theme.Dp(40));
-            closeButton.Location = new Point(topBar.Width - Theme.Dp(24) - Theme.Dp(40), Theme.Dp(12));
-            closeButton.AccessibleName = L10n.T("close.tip");
             closeButton.BackColor = Theme.Surface;
-            closeButton.Click += delegate { Close(); };
+            closeButton.Location = new Point(rightW - Theme.Dp(16) - Theme.Dp(40), Theme.Dp(8));
+            closeButton.Click += delegate { if (!working) Close(); };
             topBar.Controls.Add(closeButton);
+
+            minButton = new M3IconButton();
+            minButton.Icon = M3IconButton.Glyph.Minimize;
+            minButton.BackColor = Theme.Surface;
+            minButton.Location = new Point(closeButton.Left - Theme.Dp(4) - Theme.Dp(40), Theme.Dp(8));
+            minButton.Click += delegate { WindowState = FormWindowState.Minimized; };
+            topBar.Controls.Add(minButton);
+
+            // Main Animated Viewport Stage
+            stage = new TransitionStage();
+            stage.BackColor = Theme.Surface;
+            stage.SetBounds(railW, topH, rightW, stageH);
+            Controls.Add(stage);
+
+            // Right Bottom Action Bar
+            footer = new Panel();
+            footer.BackColor = Theme.Surface;
+            footer.SetBounds(railW, ClientSize.Height - footH, rightW, footH);
+            footer.Paint += PaintFooter;
+            Controls.Add(footer);
+
+            backButton = new M3Button();
+            backButton.Style = M3ButtonStyle.Text;
+            backButton.BackColor = Theme.Surface;
+            backButton.Click += OnBackClick;
+            footer.Controls.Add(backButton);
+
+            secondaryButton = new M3Button();
+            secondaryButton.Style = M3ButtonStyle.Tonal;
+            secondaryButton.BackColor = Theme.Surface;
+            secondaryButton.Click += OnSecondaryClick;
+            footer.Controls.Add(secondaryButton);
+
+            primaryButton = new M3Button();
+            primaryButton.Style = M3ButtonStyle.Filled;
+            primaryButton.BackColor = Theme.Surface;
+            primaryButton.Click += OnPrimaryClick;
+            footer.Controls.Add(primaryButton);
+
+            RefreshRailLabels();
+            ResumeLayout(true);
         }
 
-        protected override void OnPaintBackground(PaintEventArgs e)
+        private void RefreshRailLabels()
         {
-            using (SolidBrush bg = new SolidBrush(Theme.Surface))
-            {
-                e.Graphics.FillRectangle(bg, ClientRectangle);
-            }
+            rail.Labels = new string[] {
+                L10n.T("step.welcome"),
+                L10n.T("step.language"),
+                L10n.T("step.effects"),
+                L10n.T("step.location"),
+                L10n.T("step.install")
+            };
+            rail.Invalidate();
+        }
+
+        private void OnUiLangChanged(object sender, EventArgs e)
+        {
+            if (working) return;
+            uiLang = uiLangToggle.Selected;
+            L10n.UiLang = uiLang;
+            Theme.Init(dpiScale, uiLang == "zh");
+            Font = Theme.BodyMedium;
+            RefreshRailLabels();
+            topBar.Invalidate();
+            ShowStep(step, 0, false);
+        }
+
+        private void OnRailStepClicked(int targetStep)
+        {
+            if (working || targetStep == step) return;
+            int dir = targetStep > step ? 1 : -1;
+            ShowStep(targetStep, dir, true);
         }
 
         private void PaintTopBar(object sender, PaintEventArgs e)
@@ -235,571 +274,800 @@ namespace MosSuite
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-            int pad = Theme.Dp(24);
-            int mark = Theme.Dp(28);
-            RectangleF markRect = new RectangleF(pad, (Theme.Dp(64) - mark) / 2f, mark, mark);
-            Theme.DrawLogo(g, markRect);
-
-            Rectangle titleRect = new Rectangle(pad + mark + Theme.Dp(12), Theme.Dp(16), topBar.Width / 2, Theme.Dp(32));
-            TextRenderer.DrawText(g, L10n.T("app.title"), Theme.TitleLarge, titleRect, Theme.OnSurface,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-
-            string version = "v" + InstallerCore.SuiteVersion;
-            int textW = Theme.Measure(version, Theme.LabelSmall);
-            int chipW = textW + Theme.Dp(24);
-            int chipH = Theme.Dp(24);
-            int chipX = topBar.Width - pad - Theme.Dp(40) - Theme.Dp(8) - chipW;
-            RectangleF chip = new RectangleF(chipX, (Theme.Dp(64) - chipH) / 2f, chipW, chipH);
-            Theme.FillRound(g, Theme.SecondaryContainer, chip, Theme.Dp(8));
-            TextRenderer.DrawText(g, version, Theme.LabelSmall, Rectangle.Round(chip), Theme.OnSecondaryContainer,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            if (step < 4)
+            {
+                string counter = L10n.F("step.counter", step + 1);
+                int cw = Theme.Measure(counter, Theme.LabelMedium) + Theme.Dp(20);
+                RectangleF chip = new RectangleF(Theme.Dp(28), (topBar.Height - Theme.Dp(24)) * 0.5f, cw, Theme.Dp(24));
+                Theme.FillRound(g, Theme.SurfaceContainer, chip, Theme.Dpf(Theme.RadiusSmall));
+                TextRenderer.DrawText(g, counter, Theme.LabelMedium, Rectangle.Round(chip), Theme.OnSurfaceVariant,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            }
         }
 
         private void PaintFooter(object sender, PaintEventArgs e)
         {
-            Graphics g = e.Graphics;
-            using (Pen pen = new Pen(Theme.OutlineVariant, Theme.Dp(1)))
+            using (Pen pen = new Pen(Theme.OutlineVariant, Theme.Dpf(1f)))
             {
-                g.DrawLine(pen, 0, 0, footer.Width, 0);
+                e.Graphics.DrawLine(pen, Theme.Dp(24), 0, footer.Width - Theme.Dp(24), 0);
             }
         }
 
-        // ---------------- content ----------------
+        // ---------------- Step Navigation ----------------
 
-        private void BuildModeContent()
+        private void ShowStep(int targetStep, int direction, bool animate)
         {
-            int w = ClientSize.Width;
-            int cardW = w - Theme.Dp(48);
-            int x = Theme.Dp(24);
-            int y = Theme.Dp(24);
+            step = targetStep;
+            rail.Locked = working || (step == 4 && outcome == InstallOutcome.Working);
+            rail.SetActive(step, !animate);
+            topBar.Invalidate();
 
-            if (mode == Mode.Configure)
+            Panel nextPage = BuildStepPage(step);
+            stage.ShowPage(nextPage, direction, animate);
+            UpdateFooter();
+        }
+
+        private void UpdateFooter()
+        {
+            int pad = Theme.Dp(28);
+            int y = (footer.Height - Theme.Dp(40)) / 2;
+
+            backButton.Visible = false;
+            secondaryButton.Visible = false;
+            primaryButton.Visible = true;
+            primaryButton.Enabled = true;
+            primaryButton.ShowArrow = false;
+            primaryButton.Font = Theme.LabelLarge;
+            backButton.Font = Theme.LabelLarge;
+            secondaryButton.Font = Theme.LabelLarge;
+
+            if (step == 0)
             {
-                M3Text hero = Widgets.Label(L10n.T("hero.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
-                Widgets.Place(hero, x, y, cardW, Theme.Dp(32));
-                content.Controls.Add(hero);
-
-                M3Text sub = Widgets.Label(L10n.T("hero.body"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.Surface);
-                Widgets.Place(sub, x, y + Theme.Dp(36), cardW, Theme.Dp(22));
-                content.Controls.Add(sub);
-
-                y += Theme.Dp(80);
-                BuildLanguageCard(x, y, cardW);
-                y += Theme.Dp(212) + Theme.Dp(16);
-                BuildComponentsCard(x, y, cardW);
-                y += Theme.Dp(168) + Theme.Dp(16);
-                BuildDestinationCard(x, y, cardW);
+                primaryButton.Text = L10n.T("btn.start");
+                primaryButton.ShowArrow = true;
+                if (state.Installed)
+                {
+                    secondaryButton.Visible = true;
+                    secondaryButton.Style = M3ButtonStyle.Text;
+                    secondaryButton.Text = L10n.T("btn.uninstall");
+                }
+            }
+            else if (step == 1)
+            {
+                backButton.Visible = true;
+                backButton.Text = L10n.T("btn.back");
+                primaryButton.Text = L10n.T("btn.next");
+                primaryButton.ShowArrow = true;
+            }
+            else if (step == 2)
+            {
+                backButton.Visible = true;
+                backButton.Text = L10n.T("btn.back");
+                primaryButton.Text = L10n.T("btn.next");
+                primaryButton.ShowArrow = true;
+                primaryButton.Enabled = SelectedCount() > 0;
+            }
+            else if (step == 3)
+            {
+                backButton.Visible = true;
+                backButton.Text = L10n.T("btn.back");
+                primaryButton.Text = state.Installed ? L10n.T("btn.apply") : L10n.T("btn.install");
+                primaryButton.Enabled = SelectedCount() > 0;
             }
             else
             {
-                // Focus states (working / done / error) sit as one centered card.
-                int focusW = Math.Min(cardW, Theme.Dp(560));
-                int focusX = x + (cardW - focusW) / 2;
-
-                if (mode == Mode.Working)
+                if (outcome == InstallOutcome.Working)
                 {
-                    M3Card card = new M3Card();
-                    int cardH = Theme.Dp(152);
-                    int cardY = Math.Max(Theme.Dp(24), (content.Height - cardH) / 2);
-                    Widgets.Place(card, focusX, cardY, focusW, cardH);
-                    content.Controls.Add(card);
-
-                    M3Text title = Widgets.Label(L10n.T("work.title"), Theme.TitleLarge, Theme.OnSurface, Theme.SurfaceContainer);
-                    Widgets.Place(title, Theme.Dp(16), Theme.Dp(16), focusW - Theme.Dp(32), Theme.Dp(28));
-                    card.Controls.Add(title);
-
-                    bar = new M3ProgressBar();
-                    Widgets.Place(bar, Theme.Dp(16), Theme.Dp(60), focusW - Theme.Dp(32), Theme.Dp(4));
-                    bar.Value = 0f;
-                    bar.BackColor = Theme.SurfaceContainer;
-                    card.Controls.Add(bar);
-
-                    statusLabel = Widgets.Label("", Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-                    Widgets.Place(statusLabel, Theme.Dp(16), Theme.Dp(78), focusW - Theme.Dp(32), Theme.Dp(40));
-                    card.Controls.Add(statusLabel);
+                    primaryButton.Visible = false;
                 }
-                else if (mode == Mode.Done)
+                else if (outcome == InstallOutcome.Done)
                 {
-                    M3Card card = new M3Card();
-                    int cardH = Theme.Dp(200);
-                    int cardY = Math.Max(Theme.Dp(24), (content.Height - cardH) / 2);
-                    Widgets.Place(card, focusX, cardY, focusW, cardH);
-                    content.Controls.Add(card);
-
-                    card.Paint += delegate(object s, PaintEventArgs e)
-                    {
-                        Graphics g = e.Graphics;
-                        g.SmoothingMode = SmoothingMode.AntiAlias;
-                        RectangleF circle = new RectangleF(Theme.Dp(20), Theme.Dp(20), Theme.Dp(56), Theme.Dp(56));
-                        Theme.FillRound(g, Theme.PrimaryContainer, circle, circle.Width / 2f);
-                        Theme.DrawCheck(g, new RectangleF(circle.X + Theme.Dp(10), circle.Y + Theme.Dp(10), circle.Width - Theme.Dp(20), circle.Height - Theme.Dp(20)), Theme.OnPrimaryContainer, Theme.Dp(2.4f));
-                    };
-
-                    M3Text title = Widgets.Label(doneTitle, Theme.HeadlineSmall, Theme.OnSurface, Theme.SurfaceContainer);
-                    Widgets.Place(title, Theme.Dp(92), Theme.Dp(20), focusW - Theme.Dp(112), Theme.Dp(32));
-                    card.Controls.Add(title);
-
-                    M3Text body = Widgets.Label(doneBody, Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-                    body.Wrapped = true;
-                    Widgets.Place(body, Theme.Dp(20), Theme.Dp(92), focusW - Theme.Dp(40), Theme.Dp(88));
-                    card.Controls.Add(body);
+                    secondaryButton.Visible = !lastWasUninstall;
+                    secondaryButton.Style = M3ButtonStyle.Tonal;
+                    secondaryButton.Text = L10n.T("btn.open");
+                    primaryButton.Text = L10n.T("btn.close");
                 }
                 else
                 {
-                    M3Card card = new M3Card();
-                    int cardH = Theme.Dp(240);
-                    int cardY = Math.Max(Theme.Dp(24), (content.Height - cardH) / 2);
-                    Widgets.Place(card, focusX, cardY, focusW, cardH);
-                    content.Controls.Add(card);
-
-                    card.Paint += delegate(object s, PaintEventArgs e)
-                    {
-                        Graphics g = e.Graphics;
-                        g.SmoothingMode = SmoothingMode.AntiAlias;
-                        RectangleF circle = new RectangleF(Theme.Dp(20), Theme.Dp(20), Theme.Dp(56), Theme.Dp(56));
-                        Theme.FillRound(g, Theme.ErrorContainer, circle, circle.Width / 2f);
-                        TextRenderer.DrawText(g, "!", Theme.TitleLarge, Rectangle.Round(circle), Theme.OnErrorContainer,
-                            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-                    };
-
-                    M3Text title = Widgets.Label(L10n.T("err.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.SurfaceContainer);
-                    Widgets.Place(title, Theme.Dp(92), Theme.Dp(20), focusW - Theme.Dp(112), Theme.Dp(32));
-                    card.Controls.Add(title);
-
-                    M3Text detail = Widgets.Label(errorText, Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-                    detail.Wrapped = true;
-                    Widgets.Place(detail, Theme.Dp(20), Theme.Dp(92), focusW - Theme.Dp(40), Theme.Dp(132));
-                    card.Controls.Add(detail);
+                    backButton.Visible = true;
+                    backButton.Text = L10n.T("btn.back");
+                    primaryButton.Text = L10n.T("btn.retry");
                 }
             }
-        }
 
-        private void BuildLanguageCard(int x, int y, int width)
-        {
-            M3Card card = new M3Card();
-            Widgets.Place(card, x, y, width, Theme.Dp(212));
-            content.Controls.Add(card);
+            primaryButton.FitWidth();
+            primaryButton.Location = new Point(footer.Width - pad - primaryButton.Width, y);
 
-            int inner = width - Theme.Dp(32);
-
-            M3Text namesLabel = Widgets.Label(L10n.T("lang.names"), Theme.LabelLarge, Theme.OnSurface, Theme.SurfaceContainer);
-            Widgets.Place(namesLabel, Theme.Dp(16), Theme.Dp(14), inner, Theme.Dp(20));
-            card.Controls.Add(namesLabel);
-
-            M3Segmented segNames = new M3Segmented();
-            segNames.Values = new string[] { "system", "en" };
-            segNames.Labels = new string[] { L10n.T("lang.system"), L10n.T("lang.english") };
-            segNames.Selected = namesLanguage == "en" ? "en" : "system";
-            segNames.BackColor = Theme.SurfaceContainer;
-            Widgets.Place(segNames, Theme.Dp(16), Theme.Dp(38), inner, Theme.Dp(40));
-            segNames.SelectionChanged += OnNamesLanguageChanged;
-            card.Controls.Add(segNames);
-
-            M3Text namesHint = Widgets.Label(L10n.T("lang.names.hint"), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-            Widgets.Place(namesHint, Theme.Dp(16), Theme.Dp(84), inner, Theme.Dp(20));
-            card.Controls.Add(namesHint);
-
-            M3Text paramsLabel = Widgets.Label(L10n.T("lang.params"), Theme.LabelLarge, Theme.OnSurface, Theme.SurfaceContainer);
-            Widgets.Place(paramsLabel, Theme.Dp(16), Theme.Dp(116), inner, Theme.Dp(20));
-            card.Controls.Add(paramsLabel);
-
-            M3Segmented segParams = new M3Segmented();
-            segParams.Values = new string[] { "system", "zh", "en" };
-            segParams.Labels = new string[] { L10n.T("lang.system"), L10n.T("lang.chinese"), L10n.T("lang.english") };
-            segParams.Selected = paramsLanguage;
-            segParams.BackColor = Theme.SurfaceContainer;
-            Widgets.Place(segParams, Theme.Dp(16), Theme.Dp(140), inner, Theme.Dp(40));
-            segParams.SelectionChanged += OnParamsLanguageChanged;
-            card.Controls.Add(segParams);
-
-            M3Text paramsHint = Widgets.Label(L10n.T("lang.params.hint"), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-            Widgets.Place(paramsHint, Theme.Dp(16), Theme.Dp(186), inner, Theme.Dp(20));
-            card.Controls.Add(paramsHint);
-        }
-
-        private void OnNamesLanguageChanged(object sender, EventArgs e)
-        {
-            M3Segmented seg = (M3Segmented)sender;
-            namesLanguage = seg.Selected == "en" ? "en" : "system";
-            ApplyNames();
-        }
-
-        private void OnParamsLanguageChanged(object sender, EventArgs e)
-        {
-            M3Segmented seg = (M3Segmented)sender;
-            paramsLanguage = seg.Selected;
-            UpdateFooterState();
-        }
-
-        // Re-label the effect rows and group headers without rebuilding the window
-        // (a full rebuild is what used to flash on every click).
-        private void ApplyNames()
-        {
-            string names = L10n.ResolveNames(namesLanguage);
-            for (int i = 0; i < groupLabels.Count; i++)
+            if (secondaryButton.Visible)
             {
-                groupLabels[i].Text = L10n.GroupName(groupIds[i], names);
-            }
-            foreach (ComponentRow row in rows)
-            {
-                row.EffectName = L10n.EffectName(row.ComponentId, names);
-            }
-            UpdateFooterState();
-        }
-
-        private void BuildComponentsCard(int x, int y, int width)
-        {
-            M3Card card = new M3Card();
-            Widgets.Place(card, x, y, width, Theme.Dp(168));
-            content.Controls.Add(card);
-
-            // 16 dp padding on both sides and one 16 dp gutter between the three
-            // group columns.
-            int colW = (width - Theme.Dp(64)) / 3;
-            int leftX = Theme.Dp(16);
-            int midX = leftX + colW + Theme.Dp(16);
-            int rightX = midX + colW + Theme.Dp(16);
-
-            string names = L10n.ResolveNames(namesLanguage);
-            M3Text left = Widgets.Label(L10n.GroupName("deform", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
-            Widgets.Place(left, leftX, Theme.Dp(14), colW, Theme.Dp(20));
-            card.Controls.Add(left);
-            groupLabels.Add(left);
-            groupIds.Add("deform");
-
-            M3Text mid = Widgets.Label(L10n.GroupName("vfx", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
-            Widgets.Place(mid, midX, Theme.Dp(14), colW, Theme.Dp(20));
-            card.Controls.Add(mid);
-            groupLabels.Add(mid);
-            groupIds.Add("vfx");
-
-            M3Text right = Widgets.Label(L10n.GroupName("blur", names), Theme.LabelLarge, Theme.Primary, Theme.SurfaceContainer);
-            Widgets.Place(right, rightX, Theme.Dp(14), colW, Theme.Dp(20));
-            card.Controls.Add(right);
-            groupLabels.Add(right);
-            groupIds.Add("blur");
-
-            AddRow(card, leftX, Theme.Dp(40), colW, "shake");
-            AddRow(card, leftX, Theme.Dp(96), colW, "shrink");
-            AddRow(card, midX, Theme.Dp(40), colW, "shadow");
-            AddRow(card, midX, Theme.Dp(96), colW, "lightmix");
-            AddRow(card, rightX, Theme.Dp(40), colW, "blur");
-        }
-
-        private void AddRow(M3Card card, int x, int y, int width, string id)
-        {
-            ComponentInfo info = components.Find(delegate(ComponentInfo c) { return c.Id == id; });
-            if (info == null) return;
-
-            ComponentRow row = new ComponentRow();
-            row.ComponentId = id;
-            row.EffectName = info.Name(L10n.ResolveNames(namesLanguage));
-            row.Version = info.Version;
-            row.Installed = state.Has(id);
-            row.Checked = info.Selected;
-            row.BackColor = Theme.SurfaceContainer;
-            Widgets.Place(row, x, y, width, Theme.Dp(56));
-            row.CheckedChanged += delegate(object sender, EventArgs e)
-            {
-                ComponentRow r = (ComponentRow)sender;
-                info.Selected = r.Checked;
-                UpdateFooterState();
-            };
-            rows.Add(row);
-            card.Controls.Add(row);
-        }
-
-        private void BuildDestinationCard(int x, int y, int width)
-        {
-            M3Card card = new M3Card();
-            Widgets.Place(card, x, y, width, Theme.Dp(96));
-            content.Controls.Add(card);
-
-            M3Text label = Widgets.Label(L10n.T("dest.title"), Theme.LabelLarge, Theme.OnSurface, Theme.SurfaceContainer);
-            Widgets.Place(label, Theme.Dp(16), Theme.Dp(14), width - Theme.Dp(32) - Theme.Dp(92), Theme.Dp(20));
-            card.Controls.Add(label);
-
-            M3Button change = new M3Button();
-            change.Style = M3ButtonStyle.Text;
-            change.Text = L10n.T("dest.change");
-            change.BackColor = Theme.SurfaceContainer;
-            change.FitWidth();
-            change.Height = Theme.Dp(36);
-            change.Location = new Point(width - Theme.Dp(16) - change.Width, Theme.Dp(8));
-            change.Click += delegate { ChooseFolder(); };
-            card.Controls.Add(change);
-
-            pathLabel = Widgets.Label(root, Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-            Widgets.Place(pathLabel, Theme.Dp(16), Theme.Dp(40), width - Theme.Dp(32) - change.Width - Theme.Dp(8), Theme.Dp(20));
-            card.Controls.Add(pathLabel);
-
-            destHint = Widgets.Label(Directory.Exists(root) ? L10n.T("dest.hint") : L10n.T("dest.newFolder"),
-                Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
-            Widgets.Place(destHint, Theme.Dp(16), Theme.Dp(64), width - Theme.Dp(32), Theme.Dp(20));
-            card.Controls.Add(destHint);
-        }
-
-        private void ChooseFolder()
-        {
-            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
-            {
-                dialog.Description = L10n.T("dest.title");
-                dialog.SelectedPath = root;
-                dialog.ShowNewFolderButton = true;
-                if (dialog.ShowDialog(this) == DialogResult.OK)
+                secondaryButton.FitWidth();
+                if (step == 0)
                 {
-                    root = dialog.SelectedPath;
-                    // Update in place: rebuilding here made the whole window flash.
-                    if (pathLabel != null) pathLabel.Text = root;
-                    if (destHint != null)
+                    secondaryButton.Location = new Point(pad, y);
+                }
+                else
+                {
+                    secondaryButton.Location = new Point(primaryButton.Left - Theme.Dp(10) - secondaryButton.Width, y);
+                }
+            }
+
+            if (backButton.Visible)
+            {
+                backButton.FitWidth();
+                backButton.Location = new Point(pad, y);
+            }
+
+            closeButton.Enabled = !working;
+            uiLangToggle.Enabled = !working;
+            footer.Invalidate(true);
+        }
+
+        private void OnBackClick(object sender, EventArgs e)
+        {
+            if (working) return;
+            if (step == 4)
+            {
+                ShowStep(3, -1, true);
+            }
+            else if (step > 0)
+            {
+                ShowStep(step - 1, -1, true);
+            }
+        }
+
+        private void OnSecondaryClick(object sender, EventArgs e)
+        {
+            if (working) return;
+            if (step == 0 && state.Installed)
+            {
+                using (M3DialogForm dlg = new M3DialogForm(L10n.T("unin.title"), L10n.T("unin.body"), L10n.T("btn.cancel"), L10n.T("btn.uninstall")))
+                {
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
                     {
-                        destHint.Text = Directory.Exists(root) ? L10n.T("dest.hint") : L10n.T("dest.newFolder");
+                        StartUninstall();
                     }
                 }
             }
+            else if (step == 4 && outcome == InstallOutcome.Done)
+            {
+                InstallerCore.OpenFolder(root);
+            }
         }
 
-        // ---------------- footer ----------------
-
-        private void BuildFooterChildren()
+        private void OnPrimaryClick(object sender, EventArgs e)
         {
-            int h = Theme.Dp(40);
-            int y = (Theme.Dp(88) - h) / 2;
-            int right = footer.Width - Theme.Dp(24);
-
-            if (mode == Mode.Done)
+            if (working) return;
+            if (step < 3)
             {
-                primaryButton = MakePrimary(L10n.T("btn.close"), h);
-                primaryButton.Click += delegate { Close(); };
-                footer.Controls.Add(primaryButton);
-
-                M3Button open = new M3Button();
-                open.Style = M3ButtonStyle.Text;
-                open.Text = L10n.T("btn.open");
-                open.BackColor = Theme.Surface;
-                open.Height = h;
-                open.FitWidth();
-                open.Location = new Point(primaryButton.Left - Theme.Dp(8) - open.Width, y);
-                open.Click += delegate { InstallerCore.OpenFolder(root); };
-                footer.Controls.Add(open);
+                ShowStep(step + 1, 1, true);
             }
-            else if (mode == Mode.Error)
+            else if (step == 3)
             {
-                M3Button retry = new M3Button();
-                retry.Style = M3ButtonStyle.Text;
-                retry.Text = L10n.T("btn.retry");
-                retry.BackColor = Theme.Surface;
-                retry.Height = h;
-                retry.FitWidth();
-                retry.Location = new Point(right - retry.Width, y);
-                retry.Click += delegate
+                StartInstall();
+            }
+            else if (step == 4)
+            {
+                if (outcome == InstallOutcome.Done) Close();
+                else if (outcome == InstallOutcome.Error)
                 {
-                    mode = Mode.Configure;
-                    Rebuild();
-                };
-                footer.Controls.Add(retry);
-
-                primaryButton = null;
-            }
-            else if (mode == Mode.Working)
-            {
-                // The progress card owns the content area; the footer stays empty
-                // so the running operation cannot be cancelled half-way.
-            }
-            else
-            {
-                primaryButton = MakePrimary(state.Installed ? L10n.T("btn.apply") : L10n.T("btn.install"), h);
-                primaryButton.Click += delegate { StartInstall(); };
-                footer.Controls.Add(primaryButton);
-
-                M3Button cancel = new M3Button();
-                cancel.Style = M3ButtonStyle.Text;
-                cancel.Text = L10n.T("btn.cancel");
-                cancel.BackColor = Theme.Surface;
-                cancel.Height = h;
-                cancel.FitWidth();
-                cancel.Location = new Point(right - primaryButton.Width - Theme.Dp(8) - cancel.Width, y);
-                cancel.Click += delegate { Close(); };
-                footer.Controls.Add(cancel);
-
-                if (state.Installed)
-                {
-                    uninstallButton = new M3Button();
-                    uninstallButton.Style = M3ButtonStyle.TextDanger;
-                    uninstallButton.Text = L10n.T("btn.uninstall");
-                    uninstallButton.BackColor = Theme.Surface;
-                    uninstallButton.Height = h;
-                    uninstallButton.FitWidth();
-                    uninstallButton.Location = new Point(Theme.Dp(24), y);
-                    uninstallButton.Click += delegate { StartUninstall(); };
-                    footer.Controls.Add(uninstallButton);
+                    if (lastWasUninstall) StartUninstall();
+                    else StartInstall();
                 }
-                AddFooterState(y, h);
+            }
+        }
+
+        // ---------------- Step Page Builders ----------------
+
+        private Panel BuildStepPage(int s)
+        {
+            Panel p = new Panel();
+            p.BackColor = Theme.Surface;
+            p.Size = stage.Size;
+
+            if (s == 0) BuildWelcomePage(p);
+            else if (s == 1) BuildLanguagePage(p);
+            else if (s == 2) BuildEffectsPage(p);
+            else if (s == 3) BuildLocationPage(p);
+            else BuildInstallPage(p);
+
+            return p;
+        }
+
+        // Step 0: Welcome
+        private void BuildWelcomePage(Panel p)
+        {
+            int pad = Theme.Dp(28);
+            int innerW = p.Width - pad * 2;
+
+            M3Text title = Widgets.Label(L10n.T("welcome.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
+            Widgets.Place(title, pad, Theme.Dp(8), innerW, Theme.Dp(34));
+            p.Controls.Add(title);
+
+            M3Text body = Widgets.Label(L10n.T("welcome.body"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.Surface);
+            body.Wrapped = true;
+            Widgets.Place(body, pad, Theme.Dp(48), innerW, Theme.Dp(46));
+            p.Controls.Add(body);
+
+            // Overview card with 4 effect groups
+            M3Card card = new M3Card();
+            card.FillColor = Theme.SurfaceContainer;
+            Widgets.Place(card, pad, Theme.Dp(112), innerW, Theme.Dp(212));
+            p.Controls.Add(card);
+
+            string[] groups = {
+                L10n.T("welcome.group.deform"),
+                L10n.T("welcome.group.liquid"),
+                L10n.T("welcome.group.vfx"),
+                L10n.T("welcome.group.blur")
+            };
+            Color[] dots = { Theme.Primary, Theme.Tertiary, Theme.Secondary, Theme.Primary };
+
+            card.Paint += delegate(object s, PaintEventArgs e)
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                for (int i = 0; i < groups.Length; i++)
+                {
+                    int rowY = Theme.Dp(18) + i * Theme.Dp(46);
+                    RectangleF dot = new RectangleF(Theme.Dp(20), rowY + Theme.Dp(11), Theme.Dp(8), Theme.Dp(8));
+                    Theme.FillRound(g, dots[i], dot, Theme.Dpf(4f));
+
+                    Rectangle tr = new Rectangle(Theme.Dp(40), rowY, innerW - Theme.Dp(60), Theme.Dp(30));
+                    TextRenderer.DrawText(g, groups[i], Theme.BodyLarge, tr, Theme.OnSurface,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+
+                    if (i < groups.Length - 1)
+                    {
+                        using (Pen pen = new Pen(Theme.OutlineVariant, Theme.Dpf(1f)))
+                        {
+                            g.DrawLine(pen, Theme.Dp(40), rowY + Theme.Dp(38), innerW - Theme.Dp(20), rowY + Theme.Dp(38));
+                        }
+                    }
+                }
+            };
+
+            // Status banner
+            M3Card statusCard = new M3Card();
+            statusCard.FillColor = state.Installed ? Theme.Blend(Theme.SurfaceContainer, Theme.PrimaryContainer, 0.45f) : Theme.SurfaceLow;
+            statusCard.BorderColor = state.Installed ? Color.Transparent : Theme.OutlineVariant;
+            Widgets.Place(statusCard, pad, Theme.Dp(344), innerW, Theme.Dp(54));
+            p.Controls.Add(statusCard);
+
+            string statusText = state.Installed
+                ? L10n.F("welcome.installed",
+                    string.IsNullOrEmpty(state.SuiteVersion) ? "1.x" : state.SuiteVersion,
+                    L10n.NamesLabel(L10n.ResolveNames(state.NamesLanguage)),
+                    L10n.ParamsLabel(L10n.ResolveParams(state.ParamsLanguage)))
+                : L10n.T("welcome.fresh");
+
+            M3Text st = Widgets.Label(statusText, Theme.BodyMedium, state.Installed ? Theme.OnPrimaryContainer : Theme.OnSurfaceVariant, statusCard.FillColor);
+            Widgets.Place(st, Theme.Dp(16), Theme.Dp(12), innerW - Theme.Dp(32), Theme.Dp(30));
+            statusCard.Controls.Add(st);
+        }
+
+        // Step 1: Language
+        private void BuildLanguagePage(Panel p)
+        {
+            int pad = Theme.Dp(28);
+            int innerW = p.Width - pad * 2;
+
+            M3Text title = Widgets.Label(L10n.T("lang.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
+            Widgets.Place(title, pad, Theme.Dp(8), innerW, Theme.Dp(34));
+            p.Controls.Add(title);
+
+            M3Text body = Widgets.Label(L10n.T("lang.body"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.Surface);
+            body.Wrapped = true;
+            Widgets.Place(body, pad, Theme.Dp(46), innerW, Theme.Dp(36));
+            p.Controls.Add(body);
+
+            // Card 1: Effect names
+            M3Card c1 = new M3Card();
+            c1.FillColor = Theme.SurfaceContainer;
+            Widgets.Place(c1, pad, Theme.Dp(96), innerW, Theme.Dp(118));
+            p.Controls.Add(c1);
+
+            M3Text nLbl = Widgets.Label(L10n.T("lang.names"), Theme.TitleSmall, Theme.OnSurface, Theme.SurfaceContainer);
+            Widgets.Place(nLbl, Theme.Dp(18), Theme.Dp(14), innerW - Theme.Dp(36), Theme.Dp(22));
+            c1.Controls.Add(nLbl);
+
+            M3ConnectedButtonGroup grpNames = new M3ConnectedButtonGroup();
+            grpNames.Values = new string[] { "system", "en" };
+            grpNames.Labels = new string[] { L10n.T("lang.system"), L10n.T("lang.english") };
+            grpNames.Selected = namesLanguage == "en" ? "en" : "system";
+            grpNames.BackColor = Theme.SurfaceContainer;
+            Widgets.Place(grpNames, Theme.Dp(18), Theme.Dp(42), innerW - Theme.Dp(36), Theme.Dp(40));
+            grpNames.SnapState();
+            grpNames.SelectionChanged += delegate
+            {
+                namesLanguage = grpNames.Selected;
+                RefreshLangPreview();
+            };
+            c1.Controls.Add(grpNames);
+
+            M3Text nHint = Widgets.Label(L10n.T("lang.names.hint"), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+            Widgets.Place(nHint, Theme.Dp(18), Theme.Dp(88), innerW - Theme.Dp(36), Theme.Dp(20));
+            c1.Controls.Add(nHint);
+
+            // Card 2: Parameter language
+            M3Card c2 = new M3Card();
+            c2.FillColor = Theme.SurfaceContainer;
+            Widgets.Place(c2, pad, Theme.Dp(226), innerW, Theme.Dp(118));
+            p.Controls.Add(c2);
+
+            M3Text pLbl = Widgets.Label(L10n.T("lang.params"), Theme.TitleSmall, Theme.OnSurface, Theme.SurfaceContainer);
+            Widgets.Place(pLbl, Theme.Dp(18), Theme.Dp(14), innerW - Theme.Dp(36), Theme.Dp(22));
+            c2.Controls.Add(pLbl);
+
+            M3ConnectedButtonGroup grpParams = new M3ConnectedButtonGroup();
+            grpParams.Values = new string[] { "system", "zh", "en" };
+            grpParams.Labels = new string[] { L10n.T("lang.system"), L10n.T("lang.chinese"), L10n.T("lang.english") };
+            grpParams.Selected = (paramsLanguage == "zh" || paramsLanguage == "en") ? paramsLanguage : "system";
+            grpParams.BackColor = Theme.SurfaceContainer;
+            Widgets.Place(grpParams, Theme.Dp(18), Theme.Dp(42), innerW - Theme.Dp(36), Theme.Dp(40));
+            grpParams.SnapState();
+            grpParams.SelectionChanged += delegate
+            {
+                paramsLanguage = grpParams.Selected;
+                RefreshLangPreview();
+            };
+            c2.Controls.Add(grpParams);
+
+            M3Text pHint = Widgets.Label(L10n.T("lang.params.hint"), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+            Widgets.Place(pHint, Theme.Dp(18), Theme.Dp(88), innerW - Theme.Dp(36), Theme.Dp(20));
+            c2.Controls.Add(pHint);
+
+            // Live preview strip
+            M3Card prev = new M3Card();
+            prev.FillColor = Theme.SurfaceLow;
+            prev.BorderColor = Theme.OutlineVariant;
+            Widgets.Place(prev, pad, Theme.Dp(358), innerW, Theme.Dp(54));
+            p.Controls.Add(prev);
+
+            M3Text prevTag = Widgets.Label(L10n.T("lang.preview.label"), Theme.LabelMedium, Theme.Primary, Theme.SurfaceLow);
+            Widgets.Place(prevTag, Theme.Dp(16), Theme.Dp(16), Theme.Dp(92), Theme.Dp(22));
+            prev.Controls.Add(prevTag);
+
+            langPreviewValue = Widgets.Label("", Theme.BodyMedium, Theme.OnSurface, Theme.SurfaceLow);
+            Widgets.Place(langPreviewValue, Theme.Dp(112), Theme.Dp(16), innerW - Theme.Dp(128), Theme.Dp(22));
+            prev.Controls.Add(langPreviewValue);
+            RefreshLangPreview();
+        }
+
+        private void RefreshLangPreview()
+        {
+            if (langPreviewValue == null) return;
+            string n = L10n.ResolveNames(namesLanguage);
+            string pr = L10n.ResolveParams(paramsLanguage);
+            string group = L10n.GroupName("liquid", n);
+            string eff = L10n.EffectName("rain", n);
+            string paramSample = pr == "zh" ? "雨滴密度 · 折射强度" : "Drop Density · Refraction";
+            langPreviewValue.Text = group + "  ▸  " + eff + "   (" + paramSample + ")";
+        }
+
+        // Step 2: Effects Selection (2-column clean M3 cards)
+        private void BuildEffectsPage(Panel p)
+        {
+            effectCards.Clear();
+            int pad = Theme.Dp(28);
+            int innerW = p.Width - pad * 2;
+
+            M3Text title = Widgets.Label(L10n.T("effects.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
+            Widgets.Place(title, pad, Theme.Dp(8), innerW - Theme.Dp(190), Theme.Dp(34));
+            p.Controls.Add(title);
+
+            toggleAllBtn = new M3Button();
+            toggleAllBtn.Style = M3ButtonStyle.Text;
+            toggleAllBtn.BackColor = Theme.Surface;
+            toggleAllBtn.Height = Theme.Dp(34);
+            toggleAllBtn.Click += OnToggleAllEffects;
+            p.Controls.Add(toggleAllBtn);
+
+            effectsCountChip = Widgets.Label("", Theme.LabelMedium, Theme.Primary, Theme.Surface);
+            effectsCountChip.Alignment = TextFormatFlags.Right | TextFormatFlags.VerticalCenter;
+            Widgets.Place(effectsCountChip, pad + innerW - Theme.Dp(108), Theme.Dp(48), Theme.Dp(108), Theme.Dp(22));
+            p.Controls.Add(effectsCountChip);
+
+            M3Text body = Widgets.Label(L10n.T("effects.body"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.Surface);
+            Widgets.Place(body, pad, Theme.Dp(46), innerW - Theme.Dp(116), Theme.Dp(26));
+            p.Controls.Add(body);
+
+            string resolvedNames = L10n.ResolveNames(namesLanguage);
+            int gapX = Theme.Dp(12);
+            int gapY = Theme.Dp(10);
+            int cardW = (innerW - gapX) / 2;
+            int cardH = Theme.Dp(58);
+            int startY = Theme.Dp(86);
+
+            for (int i = 0; i < components.Count; i++)
+            {
+                ComponentInfo c = components[i];
+                int col = i % 2;
+                int row = i / 2;
+
+                M3EffectCard card = new M3EffectCard(c.Selected);
+                card.Title = c.Name(resolvedNames);
+                card.Meta = L10n.GroupName(c.Group, resolvedNames) + " · v" + c.Version;
+                card.Badge = c.IsHelper ? L10n.T("effects.helperTag") : L10n.T("effects.wasmTag");
+                card.BadgePrimary = c.IsHelper;
+                card.StatusTag = state.Has(c) ? L10n.T("effects.installedTag") : "";
+                card.BackColor = Theme.Surface;
+                Widgets.Place(card, pad + col * (cardW + gapX), startY + row * (cardH + gapY), cardW, cardH);
+
+                ComponentInfo captured = c;
+                card.Toggled += delegate
+                {
+                    captured.Selected = card.Selected;
+                    RefreshEffectsHeader();
+                    UpdateFooter();
+                };
+                p.Controls.Add(card);
+                effectCards.Add(card);
             }
 
-            UpdateFooterState();
+            RefreshEffectsHeader();
         }
 
-        private M3Button MakePrimary(string text, int height)
+        private void OnToggleAllEffects(object sender, EventArgs e)
         {
-            M3Button button = new M3Button();
-            button.Style = M3ButtonStyle.Filled;
-            button.Text = text;
-            button.BackColor = Theme.Surface;
-            button.Height = height;
-            button.FitWidth();
-            button.Location = new Point(footer.Width - Theme.Dp(24) - button.Width, (Theme.Dp(88) - height) / 2);
-            button.AccessibleName = text;
-            return button;
-        }
-
-        private void AddFooterState(int y, int h)
-        {
-            int x = state.Installed && uninstallButton != null
-                ? uninstallButton.Location.X + uninstallButton.Width + Theme.Dp(12)
-                : Theme.Dp(24);
-            footerState = Widgets.Label("", Theme.LabelSmall, Theme.OnSurfaceVariant, Theme.Surface);
-            Widgets.Place(footerState, x, y, Theme.Dp(420), h);
-            footer.Controls.Add(footerState);
-        }
-
-        private void UpdateFooterState()
-        {
-            if (footerState == null) return;
-            if (state.Installed)
+            bool selectAll = SelectedCount() < components.Count;
+            for (int i = 0; i < components.Count; i++)
             {
-                string detail = L10n.F("state.detail",
-                    L10n.NamesLabel(L10n.ResolveNames(namesLanguage)),
-                    L10n.ParamsLabel(L10n.ResolveParams(paramsLanguage)));
-                footerState.Text = L10n.F("state.installed", state.SuiteVersion) + " · " + detail;
+                components[i].Selected = selectAll;
+                if (i < effectCards.Count) effectCards[i].Selected = selectAll;
+            }
+            RefreshEffectsHeader();
+            UpdateFooter();
+        }
+
+        private void RefreshEffectsHeader()
+        {
+            int count = SelectedCount();
+            if (effectsCountChip != null)
+            {
+                effectsCountChip.Text = L10n.F("effects.count", count, components.Count);
+            }
+            if (toggleAllBtn != null)
+            {
+                toggleAllBtn.Text = count < components.Count ? L10n.T("effects.selectAll") : L10n.T("effects.selectNone");
+                toggleAllBtn.FitWidth();
+                toggleAllBtn.Location = new Point(stage.Width - Theme.Dp(28) - toggleAllBtn.Width, Theme.Dp(8));
+            }
+        }
+
+        private int SelectedCount()
+        {
+            int n = 0;
+            for (int i = 0; i < components.Count; i++) if (components[i].Selected) n++;
+            return n;
+        }
+
+        private int SelectedHelperCount()
+        {
+            int n = 0;
+            for (int i = 0; i < components.Count; i++) if (components[i].Selected && components[i].IsHelper) n++;
+            return n;
+        }
+
+        // Step 3: Location & Summary
+        private void BuildLocationPage(Panel p)
+        {
+            int pad = Theme.Dp(28);
+            int innerW = p.Width - pad * 2;
+
+            M3Text title = Widgets.Label(L10n.T("loc.title"), Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
+            Widgets.Place(title, pad, Theme.Dp(8), innerW, Theme.Dp(34));
+            p.Controls.Add(title);
+
+            M3Text body = Widgets.Label(L10n.T("loc.body"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.Surface);
+            body.Wrapped = true;
+            Widgets.Place(body, pad, Theme.Dp(46), innerW, Theme.Dp(40));
+            p.Controls.Add(body);
+
+            // Folder card with M3 Outlined field (4dp radius)
+            M3Card locCard = new M3Card();
+            locCard.FillColor = Theme.SurfaceContainer;
+            Widgets.Place(locCard, pad, Theme.Dp(100), innerW, Theme.Dp(126));
+            p.Controls.Add(locCard);
+
+            M3Text fLbl = Widgets.Label(L10n.T("loc.folder"), Theme.TitleSmall, Theme.OnSurface, Theme.SurfaceContainer);
+            Widgets.Place(fLbl, Theme.Dp(18), Theme.Dp(14), innerW - Theme.Dp(36), Theme.Dp(22));
+            locCard.Controls.Add(fLbl);
+
+            M3Button browse = new M3Button();
+            browse.Style = M3ButtonStyle.Outlined;
+            browse.Text = L10n.T("loc.browse");
+            browse.BackColor = Theme.SurfaceContainer;
+            browse.Height = Theme.Dp(40);
+            browse.FitWidth();
+            browse.Location = new Point(innerW - Theme.Dp(18) - browse.Width, Theme.Dp(44));
+            browse.Click += OnBrowseFolder;
+            locCard.Controls.Add(browse);
+
+            // M3 Outlined text field box (4dp radius per M3 spec)
+            int fieldW = browse.Left - Theme.Dp(18) - Theme.Dp(12);
+            M3Card pathBox = new M3Card();
+            pathBox.FillColor = Theme.SurfaceLow;
+            pathBox.BorderColor = Theme.Outline;
+            pathBox.CornerDp = Theme.RadiusExtraSmall;
+            Widgets.Place(pathBox, Theme.Dp(18), Theme.Dp(44), fieldW, Theme.Dp(40));
+            locCard.Controls.Add(pathBox);
+
+            pathBox.Paint += delegate(object s, PaintEventArgs e)
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Theme.DrawFolderIcon(e.Graphics, new RectangleF(Theme.Dp(10), Theme.Dp(11), Theme.Dp(18), Theme.Dp(18)), Theme.Primary, Theme.Dpf(1.6f));
+            };
+
+            pathValueLabel = Widgets.Label(root, Theme.BodyMedium, Theme.OnSurface, Theme.SurfaceLow);
+            Widgets.Place(pathValueLabel, Theme.Dp(34), Theme.Dp(6), fieldW - Theme.Dp(42), Theme.Dp(28));
+            pathBox.Controls.Add(pathValueLabel);
+
+            pathStatusLabel = Widgets.Label("", Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+            Widgets.Place(pathStatusLabel, Theme.Dp(18), Theme.Dp(94), innerW - Theme.Dp(36), Theme.Dp(20));
+            locCard.Controls.Add(pathStatusLabel);
+            RefreshPathStatus();
+
+            // Summary card
+            M3Card sumCard = new M3Card();
+            sumCard.FillColor = Theme.SurfaceLow;
+            sumCard.BorderColor = Theme.OutlineVariant;
+            Widgets.Place(sumCard, pad, Theme.Dp(242), innerW, Theme.Dp(158));
+            p.Controls.Add(sumCard);
+
+            M3Text sumTitle = Widgets.Label(L10n.T("loc.summary"), Theme.TitleSmall, Theme.Primary, Theme.SurfaceLow);
+            Widgets.Place(sumTitle, Theme.Dp(18), Theme.Dp(16), innerW - Theme.Dp(36), Theme.Dp(22));
+            sumCard.Controls.Add(sumTitle);
+
+            string nLabel = L10n.NamesLabel(L10n.ResolveNames(namesLanguage));
+            string pLabel = L10n.ParamsLabel(L10n.ResolveParams(paramsLanguage));
+            M3Text sumLang = Widgets.Label(L10n.F("loc.summary.lang", nLabel, pLabel), Theme.BodyMedium, Theme.OnSurface, Theme.SurfaceLow);
+            Widgets.Place(sumLang, Theme.Dp(18), Theme.Dp(46), innerW - Theme.Dp(36), Theme.Dp(24));
+            sumCard.Controls.Add(sumLang);
+
+            int selCount = SelectedCount();
+            int helperCount = SelectedHelperCount();
+            string countLine = helperCount > 0
+                ? L10n.F("loc.summary.count", selCount, helperCount)
+                : L10n.F("loc.summary.countWasmOnly", selCount);
+            M3Text sumCount = Widgets.Label(countLine, Theme.BodyMedium, Theme.OnSurface, Theme.SurfaceLow);
+            Widgets.Place(sumCount, Theme.Dp(18), Theme.Dp(74), innerW - Theme.Dp(36), Theme.Dp(24));
+            sumCard.Controls.Add(sumCount);
+
+            // Selected effect chips summary (wrapped so all 8 names remain visible)
+            string resolvedNames = L10n.ResolveNames(namesLanguage);
+            List<string> names = new List<string>();
+            for (int i = 0; i < components.Count; i++) if (components[i].Selected) names.Add(components[i].Name(resolvedNames));
+            M3Text sumList = Widgets.Label(string.Join(" · ", names.ToArray()), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceLow);
+            sumList.Wrapped = true;
+            Widgets.Place(sumList, Theme.Dp(18), Theme.Dp(104), innerW - Theme.Dp(36), Theme.Dp(40));
+            sumCard.Controls.Add(sumList);
+        }
+
+        private void OnBrowseFolder(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog dlg = new FolderBrowserDialog())
+            {
+                dlg.SelectedPath = Directory.Exists(root) ? root : InstallerCore.DefaultRoot();
+                if (dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(dlg.SelectedPath))
+                {
+                    root = dlg.SelectedPath;
+                    state = InstallerCore.Detect(root);
+                    if (pathValueLabel != null) pathValueLabel.Text = root;
+                    RefreshPathStatus();
+                    UpdateFooter();
+                }
+            }
+        }
+
+        private void RefreshPathStatus()
+        {
+            if (pathStatusLabel == null) return;
+            bool exists = Directory.Exists(Path.Combine(root, "Plug-ins")) || File.Exists(Path.Combine(root, "settings.json")) || state.Installed;
+            pathStatusLabel.Text = exists ? L10n.T("loc.found") : L10n.T("loc.willCreate");
+            pathStatusLabel.ForeColor = exists ? Theme.Primary : Theme.OnSurfaceVariant;
+        }
+
+        // Step 4: Working / Done / Error
+        private void BuildInstallPage(Panel p)
+        {
+            int pad = Theme.Dp(28);
+            int innerW = p.Width - pad * 2;
+            progressBar = null;
+            statusLabel = null;
+            spinner = null;
+
+            if (outcome == InstallOutcome.Working)
+            {
+                M3Card card = new M3Card();
+                card.FillColor = Theme.SurfaceContainer;
+                int cardH = Theme.Dp(196);
+                Widgets.Place(card, pad, (p.Height - cardH) / 2 - Theme.Dp(12), innerW, cardH);
+                p.Controls.Add(card);
+
+                spinner = new M3Spinner();
+                spinner.BackColor = Theme.SurfaceContainer;
+                Widgets.Place(spinner, Theme.Dp(24), Theme.Dp(28), Theme.Dp(40), Theme.Dp(40));
+                card.Controls.Add(spinner);
+
+                string wTitle = lastWasUninstall ? L10n.T("work.uninstalling") : L10n.T("work.title");
+                M3Text title = Widgets.Label(wTitle, Theme.TitleLarge, Theme.OnSurface, Theme.SurfaceContainer);
+                Widgets.Place(title, Theme.Dp(78), Theme.Dp(24), innerW - Theme.Dp(102), Theme.Dp(30));
+                card.Controls.Add(title);
+
+                M3Text sub = Widgets.Label(L10n.T("work.sub"), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+                Widgets.Place(sub, Theme.Dp(78), Theme.Dp(54), innerW - Theme.Dp(102), Theme.Dp(20));
+                card.Controls.Add(sub);
+
+                progressBar = new M3ProgressBar();
+                progressBar.BackColor = Theme.SurfaceContainer;
+                Widgets.Place(progressBar, Theme.Dp(24), Theme.Dp(108), innerW - Theme.Dp(48), Theme.Dp(6));
+                card.Controls.Add(progressBar);
+
+                statusLabel = Widgets.Label(L10n.T("progress.extract"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+                Widgets.Place(statusLabel, Theme.Dp(24), Theme.Dp(132), innerW - Theme.Dp(48), Theme.Dp(36));
+                card.Controls.Add(statusLabel);
+            }
+            else if (outcome == InstallOutcome.Done)
+            {
+                DoneHeroBadge badge = new DoneHeroBadge();
+                badge.BackColor = Theme.Surface;
+                Widgets.Place(badge, (p.Width - Theme.Dp(76)) / 2, Theme.Dp(28), Theme.Dp(76), Theme.Dp(76));
+                p.Controls.Add(badge);
+
+                string dTitle = lastWasUninstall ? L10n.T("unin.done") : L10n.T("done.title");
+                M3Text title = Widgets.Label(dTitle, Theme.HeadlineSmall, Theme.OnSurface, Theme.Surface);
+                title.Alignment = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
+                Widgets.Place(title, pad, Theme.Dp(118), innerW, Theme.Dp(34));
+                p.Controls.Add(title);
+
+                string dBody = lastWasUninstall ? L10n.T("unin.doneBody") : L10n.F("done.body", lastInstalledCount);
+                M3Text body = Widgets.Label(dBody, Theme.BodyLarge, Theme.OnSurfaceVariant, Theme.Surface);
+                body.Alignment = TextFormatFlags.HorizontalCenter | TextFormatFlags.Top;
+                body.Wrapped = true;
+                Widgets.Place(body, pad + Theme.Dp(24), Theme.Dp(160), innerW - Theme.Dp(48), Theme.Dp(54));
+                p.Controls.Add(body);
+
+                if (!lastWasUninstall && lastInstalledHelper)
+                {
+                    M3Card tip = new M3Card();
+                    tip.FillColor = Theme.SurfaceContainer;
+                    tip.BorderColor = Theme.OutlineVariant;
+                    Widgets.Place(tip, pad, Theme.Dp(234), innerW, Theme.Dp(108));
+                    p.Controls.Add(tip);
+
+                    M3Text tipText = Widgets.Label(L10n.T("done.helperTip"), Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+                    tipText.Wrapped = true;
+                    Widgets.Place(tipText, Theme.Dp(20), Theme.Dp(18), innerW - Theme.Dp(40), Theme.Dp(74));
+                    tip.Controls.Add(tipText);
+                }
             }
             else
             {
-                footerState.Text = "";
+                M3Card card = new M3Card();
+                card.FillColor = Theme.SurfaceContainer;
+                card.BorderColor = Theme.Error;
+                int cardH = Theme.Dp(256);
+                Widgets.Place(card, pad, (p.Height - cardH) / 2 - Theme.Dp(10), innerW, cardH);
+                p.Controls.Add(card);
+
+                card.Paint += delegate(object s, PaintEventArgs e)
+                {
+                    Graphics g = e.Graphics;
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    RectangleF circle = new RectangleF(Theme.Dp(22), Theme.Dp(22), Theme.Dp(48), Theme.Dp(48));
+                    Theme.FillRound(g, Theme.ErrorContainer, circle, circle.Width * 0.5f);
+                    TextRenderer.DrawText(g, "!", Theme.TitleLarge, Rectangle.Round(circle), Theme.OnErrorContainer,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+                };
+
+                string eTitle = lastWasUninstall ? L10n.T("unin.failed") : L10n.T("err.title");
+                M3Text title = Widgets.Label(eTitle, Theme.HeadlineSmall, Theme.OnSurface, Theme.SurfaceContainer);
+                Widgets.Place(title, Theme.Dp(84), Theme.Dp(28), innerW - Theme.Dp(106), Theme.Dp(34));
+                card.Controls.Add(title);
+
+                M3Text detail = Widgets.Label(errorText, Theme.BodyMedium, Theme.OnSurfaceVariant, Theme.SurfaceContainer);
+                detail.Wrapped = true;
+                Widgets.Place(detail, Theme.Dp(22), Theme.Dp(88), innerW - Theme.Dp(44), Theme.Dp(148));
+                card.Controls.Add(detail);
             }
         }
 
-        // ---------------- actions ----------------
-
-        private bool AnySelected()
-        {
-            foreach (ComponentInfo c in components)
-            {
-                if (c.Selected) return true;
-            }
-            return false;
-        }
-
-        private InstallOptions BuildOptions()
-        {
-            InstallOptions o = new InstallOptions();
-            o.Root = root;
-            o.NamesLanguage = namesLanguage;
-            o.ParamsLanguage = paramsLanguage;
-            o.Components = components;
-            return o;
-        }
+        // ---------------- Install / Uninstall Execution ----------------
 
         private void StartInstall()
         {
-            if (working) return;
-            if (!AnySelected())
-            {
-                errorText = L10n.T("lang.names.hint");
-                return;
-            }
-            InstallOptions options = BuildOptions();
             working = true;
-            mode = Mode.Working;
-            Rebuild();
+            lastWasUninstall = false;
+            outcome = InstallOutcome.Working;
+            ShowStep(4, 1, true);
 
-            Thread thread = new Thread(delegate() { RunInstall(options); });
-            thread.IsBackground = true;
-            thread.Start();
-        }
-
-        private void RunInstall(InstallOptions options)
-        {
-            InstallReport report = InstallerCore.Install(options, ReportProgress);
-            try
+            InstallOptions opts = new InstallOptions();
+            opts.Root = root;
+            opts.NamesLanguage = namesLanguage;
+            opts.ParamsLanguage = paramsLanguage;
+            foreach (ComponentInfo c in components)
             {
-                BeginInvoke(new Action(delegate()
+                opts.Components.Add(new ComponentInfo
+                {
+                    Id = c.Id,
+                    Wasm = c.Wasm,
+                    HelperExe = c.HelperExe,
+                    LegacyWasm = c.LegacyWasm,
+                    Version = c.Version,
+                    Group = c.Group,
+                    Selected = c.Selected
+                });
+            }
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                InstallReport report = InstallerCore.Install(opts, ReportProgress);
+                Thread.Sleep(240); // Let final progress bar spring finish smoothly
+                InvokeOnUi(delegate
                 {
                     working = false;
+                    state = InstallerCore.Detect(root);
                     if (report.Ok)
                     {
-                        state = InstallerCore.Detect(root);
-                        doneTitle = L10n.T("done.title");
-                        doneBody = L10n.T("done.body");
-                        mode = Mode.Done;
+                        lastInstalledCount = report.InstalledCount;
+                        lastInstalledHelper = report.InstalledAnyHelper;
+                        outcome = InstallOutcome.Done;
                     }
                     else
                     {
                         errorText = report.Error;
-                        mode = Mode.Error;
+                        outcome = InstallOutcome.Error;
                     }
-                    Rebuild();
-                }));
-            }
-            catch { }
-        }
-
-        private void ReportProgress(float value, string text)
-        {
-            if (IsDisposed) return;
-            try
-            {
-                BeginInvoke(new Action(delegate()
-                {
-                    if (bar != null) bar.Value = value;
-                    if (statusLabel != null) statusLabel.Text = text;
-                }));
-            }
-            catch { }
+                    ShowStep(4, 1, true);
+                });
+            });
         }
 
         private void StartUninstall()
         {
-            if (working) return;
-            M3DialogForm dialog = new M3DialogForm(L10n.T("unin.title"), L10n.T("unin.body"),
-                L10n.T("btn.cancel"), L10n.T("btn.uninstall"));
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-
             working = true;
-            mode = Mode.Working;
-            Rebuild();
+            lastWasUninstall = true;
+            outcome = InstallOutcome.Working;
+            ShowStep(4, 1, true);
 
-            Thread thread = new Thread(delegate()
+            string target = root;
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                InstallReport report = InstallerCore.Uninstall(root, ReportProgress);
-                try
+                InstallReport report = InstallerCore.Uninstall(target, ReportProgress);
+                Thread.Sleep(220);
+                InvokeOnUi(delegate
                 {
-                    BeginInvoke(new Action(delegate()
+                    working = false;
+                    state = InstallerCore.Detect(root);
+                    if (report.Ok)
                     {
-                        working = false;
-                        if (report.Ok)
-                        {
-                            state = InstallerCore.Detect(root);
-                            doneTitle = L10n.T("unin.done");
-                            doneBody = "";
-                            mode = Mode.Done;
-                        }
-                        else
-                        {
-                            errorText = report.Error;
-                            mode = Mode.Error;
-                        }
-                        Rebuild();
-                    }));
-                }
-                catch { }
+                        outcome = InstallOutcome.Done;
+                    }
+                    else
+                    {
+                        errorText = report.Error;
+                        outcome = InstallOutcome.Error;
+                    }
+                    ShowStep(4, 1, true);
+                });
             });
-            thread.IsBackground = true;
-            thread.Start();
         }
 
-        // ---------------- keyboard ----------------
+        private void ReportProgress(float v, string text)
+        {
+            InvokeOnUi(delegate
+            {
+                if (progressBar != null) progressBar.Value = v;
+                if (statusLabel != null) statusLabel.Text = text;
+            });
+        }
+
+        private void InvokeOnUi(Action action)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try { BeginInvoke(action); } catch { }
+        }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -808,23 +1076,264 @@ namespace MosSuite
                 Close();
                 return true;
             }
-            if ((keyData == Keys.Enter) && mode == Mode.Configure && primaryButton != null && !working)
-            {
-                StartInstall();
-                return true;
-            }
-            if ((keyData == Keys.Enter) && mode == Mode.Done)
-            {
-                Close();
-                return true;
-            }
             return base.ProcessCmdKey(ref msg, keyData);
         }
+    }
 
-        protected override void OnShown(EventArgs e)
+    // ---------------- Shared Axis X Bitmap-Composited Transition Stage ----------------
+
+    internal sealed class TransitionStage : Panel
+    {
+        private Panel currentPage;
+        private Bitmap outSnap;
+        private Bitmap inSnap;
+        private int slideDir;
+        private readonly SpringValue spatial = new SpringValue(1f, SpringSpec.ExpressiveDefaultSpatial);
+        private readonly SpringValue fade = new SpringValue(1f, SpringSpec.ExpressiveDefaultEffects);
+        private bool animating;
+        private bool subscribed;
+
+        public TransitionStage()
         {
-            base.OnShown(e);
-            if (primaryButton != null) primaryButton.Focus();
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+        }
+
+        public void ShowPage(Panel nextPage, int direction, bool animate)
+        {
+            bool canAnimate = animate && direction != 0 && currentPage != null && Width > 0 && Height > 0 && IsHandleCreated;
+            if (!canAnimate)
+            {
+                StopAnimation();
+                ReplaceLivePage(nextPage);
+                return;
+            }
+
+            Bitmap oldBmp = CaptureControl(currentPage);
+            ReplaceLivePage(nextPage);
+            Bitmap newBmp = CaptureControl(nextPage);
+
+            DisposeSnapshots();
+            outSnap = oldBmp;
+            inSnap = newBmp;
+            slideDir = direction;
+            animating = true;
+            currentPage.Visible = false;
+
+            spatial.Snap(0f);
+            spatial.Target = 1f;
+            fade.Snap(0f);
+            fade.Target = 1f;
+
+            if (!subscribed)
+            {
+                subscribed = true;
+                MotionClock.Subscribe(OnTick);
+            }
+            Invalidate();
+        }
+
+        private void ReplaceLivePage(Panel nextPage)
+        {
+            if (currentPage != null)
+            {
+                Controls.Remove(currentPage);
+                currentPage.Dispose();
+            }
+            currentPage = nextPage;
+            currentPage.SetBounds(0, 0, Width, Height);
+            currentPage.Visible = true;
+            Controls.Add(currentPage);
+        }
+
+        private Bitmap CaptureControl(Control c)
+        {
+            Bitmap bmp = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
+            c.SetBounds(0, 0, Width, Height);
+            c.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+            return bmp;
+        }
+
+        private void OnTick(float dt)
+        {
+            if (!animating) return;
+            spatial.Step(dt);
+            fade.Step(dt);
+
+            if (spatial.IsSettled && fade.IsSettled)
+            {
+                StopAnimation();
+                if (currentPage != null) currentPage.Visible = true;
+            }
+            Invalidate();
+        }
+
+        private void StopAnimation()
+        {
+            animating = false;
+            if (subscribed)
+            {
+                MotionClock.Unsubscribe(OnTick);
+                subscribed = false;
+            }
+            DisposeSnapshots();
+        }
+
+        private void DisposeSnapshots()
+        {
+            if (outSnap != null) { outSnap.Dispose(); outSnap = null; }
+            if (inSnap != null) { inSnap.Dispose(); inSnap = null; }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            StopAnimation();
+            base.Dispose(disposing);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+
+            if (!animating) return;
+
+            float dist = Theme.Dpf(36f);
+            float p = spatial.Value;
+            float a = Math.Max(0f, Math.Min(1f, fade.Value));
+
+            if (outSnap != null && a < 0.99f)
+            {
+                float outX = -slideDir * dist * Math.Min(1f, p);
+                DrawWithAlpha(g, outSnap, outX, 0f, 1f - a);
+            }
+            if (inSnap != null && a > 0.01f)
+            {
+                float inX = slideDir * dist * (1f - p);
+                DrawWithAlpha(g, inSnap, inX, 0f, a);
+            }
+        }
+
+        private static void DrawWithAlpha(Graphics g, Bitmap bmp, float x, float y, float alpha)
+        {
+            ColorMatrix cm = new ColorMatrix();
+            cm.Matrix33 = Math.Max(0f, Math.Min(1f, alpha));
+            using (ImageAttributes ia = new ImageAttributes())
+            {
+                ia.SetColorMatrix(cm, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                Rectangle dst = new Rectangle((int)Math.Round(x), (int)Math.Round(y), bmp.Width, bmp.Height);
+                g.DrawImage(bmp, dst, 0, 0, bmp.Width, bmp.Height, GraphicsUnit.Pixel, ia);
+            }
+        }
+    }
+
+    // ---------------- Animated M3 Circular Spinner ----------------
+
+    internal sealed class M3Spinner : Control
+    {
+        private float angle;
+        private bool subscribed;
+
+        public M3Spinner()
+        {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+            TabStop = false;
+            subscribed = true;
+            MotionClock.Subscribe(OnTick);
+        }
+
+        private void OnTick(float dt)
+        {
+            angle = (angle + dt * 300f) % 360f;
+            Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (subscribed) { MotionClock.Unsubscribe(OnTick); subscribed = false; }
+            base.Dispose(disposing);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+
+            float penW = Theme.Dpf(3.5f);
+            RectangleF r = new RectangleF(penW, penW, Width - penW * 2f, Height - penW * 2f);
+            using (Pen track = new Pen(Theme.SurfaceHighest, penW))
+            {
+                g.DrawEllipse(track, r);
+            }
+            using (Pen arc = new Pen(Theme.Primary, penW))
+            {
+                arc.StartCap = LineCap.Round;
+                arc.EndCap = LineCap.Round;
+                float sweep = 80f + 50f * (float)Math.Sin(angle * Math.PI / 180.0);
+                g.DrawArc(arc, r, angle, sweep);
+            }
+        }
+    }
+
+    // ---------------- Animated M3 Expressive Completion Badge ----------------
+
+    internal sealed class DoneHeroBadge : Control
+    {
+        private readonly SpringValue scaleSpring = new SpringValue(0.45f, SpringSpec.ExpressiveDefaultSpatial);
+        private float checkProg = 0f;
+        private bool subscribed;
+
+        public DoneHeroBadge()
+        {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+            TabStop = false;
+            scaleSpring.Target = 1f;
+            subscribed = true;
+            MotionClock.Subscribe(OnTick);
+        }
+
+        private void OnTick(float dt)
+        {
+            bool dirty = scaleSpring.Step(dt);
+            if (scaleSpring.Value > 0.72f && checkProg < 1f)
+            {
+                checkProg = Math.Min(1f, checkProg + dt * 3.4f);
+                dirty = true;
+            }
+            if (dirty) Invalidate();
+            else if (scaleSpring.IsSettled && checkProg >= 1f)
+            {
+                MotionClock.Unsubscribe(OnTick);
+                subscribed = false;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (subscribed) { MotionClock.Unsubscribe(OnTick); subscribed = false; }
+            base.Dispose(disposing);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+
+            float s = Math.Max(0.2f, Math.Min(1.12f, scaleSpring.Value));
+            float d = (Math.Min(Width, Height) - Theme.Dpf(8f)) * s;
+            RectangleF circle = new RectangleF((Width - d) * 0.5f, (Height - d) * 0.5f, d, d);
+            Theme.FillRound(g, Theme.PrimaryContainer, circle, d * 0.5f);
+
+            if (checkProg > 0.01f)
+            {
+                float inset = d * 0.22f;
+                RectangleF cb = new RectangleF(circle.X + inset, circle.Y + inset, d - inset * 2f, d - inset * 2f);
+                Theme.DrawCheck(g, cb, Theme.OnPrimaryContainer, Theme.Dpf(3.2f), checkProg);
+            }
         }
     }
 }

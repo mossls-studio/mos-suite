@@ -17,9 +17,13 @@ namespace MosSuite
     {
         public string Id;
         public string Wasm;
+        public string HelperExe;
+        public string LegacyWasm;
         public string Version;
         public string Group;
         public bool Selected = true;
+
+        public bool IsHelper { get { return !string.IsNullOrEmpty(HelperExe); } }
 
         public string Name(string namesLang)
         {
@@ -40,6 +44,8 @@ namespace MosSuite
         public bool Ok;
         public string Error;
         public string Root;
+        public int InstalledCount;
+        public bool InstalledAnyHelper;
     }
 
     internal sealed class InstallState
@@ -51,31 +57,29 @@ namespace MosSuite
         public string Root = "";
         public List<string> Files = new List<string>();
 
-        // A component counts as present when the install record lists it or the
-        // file is physically there (manual installs and older copies have no record).
-        public bool Has(string id)
+        public bool Has(ComponentInfo c)
         {
-            if (Files.Exists(delegate(string f) { return f.IndexOf(id, StringComparison.OrdinalIgnoreCase) >= 0; }))
+            if (Files.Exists(delegate(string f) { return f.IndexOf(c.Id, StringComparison.OrdinalIgnoreCase) >= 0; }))
                 return true;
             if (Root.Length == 0) return false;
-            if (id == "lightmix")
-                return File.Exists(Path.Combine(Root, "helpers", InstallerCore.HelperExe));
-            string wasm = "";
-            if (id == "shake") wasm = "mos_shake.wasm";
-            else if (id == "shrink") wasm = "ae_warp.wasm";
-            else if (id == "shadow") wasm = "mos_shadow.wasm";
-            else if (id == "blur") wasm = "mos_blur.wasm";
-            return wasm.Length > 0 && File.Exists(Path.Combine(Root, "Plug-ins", wasm));
+            if (c.IsHelper)
+                return File.Exists(Path.Combine(Root, "helpers", c.HelperExe));
+            return !string.IsNullOrEmpty(c.Wasm) && File.Exists(Path.Combine(Root, "Plug-ins", c.Wasm));
         }
     }
 
     internal static class InstallerCore
     {
-        public const string SuiteVersion = "1.3.0";
+        public const string SuiteVersion = "1.4.0";
         public const string ConfigName = "mos-suite.json";
         public const string RecordDir = "mos-suite";
-        public const string HelperExe = "effectcraft-helper-mos-lightmix.exe";
         public const string StartupScript = "mos-load-helpers.jsx";
+
+        public static readonly string[] AllHelperProcessNames = {
+            "effectcraft-helper-mos-lightmix",
+            "effectcraft-helper-mos-rain",
+            "effectcraft-helper-mos-lens"
+        };
 
         public static string DefaultRoot()
         {
@@ -85,25 +89,27 @@ namespace MosSuite
         public static List<ComponentInfo> Components()
         {
             List<ComponentInfo> list = new List<ComponentInfo>();
-            list.Add(new ComponentInfo { Id = "shake", Wasm = "mos_shake.wasm", Version = "1.2.0", Group = "deform" });
-            list.Add(new ComponentInfo { Id = "shrink", Wasm = "ae_warp.wasm", Version = "1.3.0", Group = "deform" });
-            list.Add(new ComponentInfo { Id = "shadow", Wasm = "mos_shadow.wasm", Version = "0.6.2", Group = "vfx" });
-            list.Add(new ComponentInfo { Id = "blur", Wasm = "mos_blur.wasm", Version = "0.1.0", Group = "blur" });
-            list.Add(new ComponentInfo { Id = "lightmix", Wasm = "", Version = "1.5.0", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "shake",    Wasm = "mos_shake.wasm",  HelperExe = "",                                    LegacyWasm = "",              Version = "1.2.0", Group = "deform" });
+            list.Add(new ComponentInfo { Id = "shrink",   Wasm = "ae_warp.wasm",    HelperExe = "",                                    LegacyWasm = "mos_shrink.wasm", Version = "1.3.0", Group = "deform" });
+            list.Add(new ComponentInfo { Id = "ripple",   Wasm = "mos_ripple.wasm", HelperExe = "",                                    LegacyWasm = "",              Version = "1.1.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "rain",     Wasm = "",                HelperExe = "effectcraft-helper-mos-rain.exe",     LegacyWasm = "mos_rain.wasm", Version = "5.0.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "lens",     Wasm = "",                HelperExe = "effectcraft-helper-mos-lens.exe",     LegacyWasm = "mos_lens.wasm", Version = "2.0.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "shadow",   Wasm = "mos_shadow.wasm", HelperExe = "",                                    LegacyWasm = "",              Version = "0.6.2", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "lightmix", Wasm = "",                HelperExe = "effectcraft-helper-mos-lightmix.exe", LegacyWasm = "",              Version = "1.5.0", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "blur",     Wasm = "mos_blur.wasm",   HelperExe = "",                                    LegacyWasm = "",              Version = "0.1.0", Group = "blur" });
             return list;
         }
 
-        // The payload ships one wasm per (names, params) language pair.
         public static string Variant(string namesLang, string paramsLang)
         {
             return namesLang + "-" + paramsLang;
         }
 
-        public static bool HasLightmix(InstallOptions o)
+        public static bool HasAnyHelper(InstallOptions o)
         {
             foreach (ComponentInfo c in o.Components)
             {
-                if (c.Id == "lightmix" && c.Selected) return true;
+                if (c.Selected && c.IsHelper) return true;
             }
             return false;
         }
@@ -149,14 +155,10 @@ namespace MosSuite
             string temp = Path.Combine(Path.GetTempPath(), "mos-suite-" + Guid.NewGuid().ToString("N").Substring(0, 8));
             try
             {
-                KillHelper();
-                if (File.Exists(Path.Combine(o.Root, "EffectCraft.exe")))
-                {
-                    // The host may lock its Plug-ins folder while running; a copy failure below reports it.
-                }
+                KillHelpers();
                 Directory.CreateDirectory(o.Root);
 
-                progress(0.04f, L10n.T("progress.extract"));
+                progress(0.05f, L10n.T("progress.extract"));
                 ExtractPayload(temp);
 
                 List<string> relative = new List<string>();
@@ -165,54 +167,68 @@ namespace MosSuite
                 {
                     if (c.Selected) selected++;
                 }
-                float step = 0.72f / Math.Max(1, selected + (HasLightmix(o) ? 2 : 0));
-                float done = 0.08f;
+                bool anyHelper = HasAnyHelper(o);
+                float step = 0.74f / Math.Max(1, selected + (anyHelper ? 1 : 0));
+                float done = 0.10f;
 
                 string namesLang = L10n.ResolveNames(o.NamesLanguage);
                 string paramsLang = L10n.ResolveParams(o.ParamsLanguage);
                 string variant = Variant(namesLang, paramsLang);
 
-                bool lightmix = false;
                 foreach (ComponentInfo c in o.Components)
                 {
                     if (!c.Selected) continue;
-                    if (c.Id == "lightmix")
+
+                    // Retire legacy conflicting wasm if upgrading (e.g. mos_rain.wasm -> helper, mos_shrink.wasm -> ae_warp.wasm).
+                    if (!string.IsNullOrEmpty(c.LegacyWasm))
                     {
-                        lightmix = true;
-                        continue;
+                        RetireLegacyWasm(o.Root, c.LegacyWasm);
                     }
-                    progress(done, L10n.F("progress.copy", c.Name(namesLang)));
-                    string src = Path.Combine(temp, "plug-ins", variant, c.Wasm);
-                    if (!File.Exists(src)) throw new FileNotFoundException("Payload entry missing: " + src);
-                    string dst = Path.Combine(o.Root, "Plug-ins", c.Wasm);
-                    Directory.CreateDirectory(Path.GetDirectoryName(dst));
-                    File.Copy(src, dst, true);
-                    relative.Add("Plug-ins\\" + c.Wasm);
+
+                    if (c.IsHelper)
+                    {
+                        progress(done, L10n.F("progress.helper", c.Name(namesLang)));
+                        string helperSrc = Path.Combine(temp, "helpers", c.HelperExe);
+                        if (!File.Exists(helperSrc)) throw new FileNotFoundException("Payload entry missing: " + helperSrc);
+                        string helpersDir = Path.Combine(o.Root, "helpers");
+                        Directory.CreateDirectory(helpersDir);
+                        File.Copy(helperSrc, Path.Combine(helpersDir, c.HelperExe), true);
+                        relative.Add("helpers\\" + c.HelperExe);
+                        report.InstalledAnyHelper = true;
+                    }
+                    else
+                    {
+                        progress(done, L10n.F("progress.copy", c.Name(namesLang)));
+                        string src = Path.Combine(temp, "plug-ins", variant, c.Wasm);
+                        if (!File.Exists(src)) throw new FileNotFoundException("Payload entry missing: " + src);
+                        string dst = Path.Combine(o.Root, "Plug-ins", c.Wasm);
+                        Directory.CreateDirectory(Path.GetDirectoryName(dst));
+                        File.Copy(src, dst, true);
+                        relative.Add("Plug-ins\\" + c.Wasm);
+                    }
+                    report.InstalledCount++;
                     done += step;
                 }
 
-                if (lightmix)
+                if (anyHelper)
                 {
-                    progress(done, L10n.T("progress.helper"));
-                    string helperSrc = Path.Combine(temp, "helper", HelperExe);
-                    if (!File.Exists(helperSrc)) throw new FileNotFoundException("Payload entry missing: " + helperSrc);
-                    Directory.CreateDirectory(Path.Combine(o.Root, "helpers"));
-                    File.Copy(helperSrc, Path.Combine(o.Root, "helpers", HelperExe), true);
-                    relative.Add("helpers\\" + HelperExe);
-
-                    progress(done + step, L10n.T("progress.script"));
+                    progress(done, L10n.T("progress.script"));
                     string jsxSrc = Path.Combine(temp, "scripts", StartupScript);
-                    Directory.CreateDirectory(Path.Combine(o.Root, "Scripts", "Startup"));
-                    File.Copy(jsxSrc, Path.Combine(o.Root, "Scripts", "Startup", StartupScript), true);
-                    relative.Add("Scripts\\Startup\\" + StartupScript);
-                    done += step * 2f;
+                    if (File.Exists(jsxSrc))
+                    {
+                        string startupDir = Path.Combine(o.Root, "Scripts", "Startup");
+                        Directory.CreateDirectory(startupDir);
+                        File.Copy(jsxSrc, Path.Combine(startupDir, StartupScript), true);
+                        relative.Add("Scripts\\Startup\\" + StartupScript);
+                    }
+                    done += step;
                 }
 
-                progress(done, L10n.T("progress.manual"));
+                progress(0.86f, L10n.T("progress.manual"));
                 CopyManual(temp, o.Root, "zh", "安装说明.md", relative);
                 CopyManual(temp, o.Root, "en", "Install-Guide.md", relative);
 
-                progress(0.9f, L10n.T("progress.config"));
+                progress(0.91f, L10n.T("progress.config"));
                 WriteConfig(o, relative);
 
                 progress(0.96f, L10n.T("progress.verify"));
@@ -240,6 +256,21 @@ namespace MosSuite
                 }
                 catch { }
             }
+        }
+
+        private static void RetireLegacyWasm(string root, string legacyFile)
+        {
+            try
+            {
+                string src = Path.Combine(root, "Plug-ins", legacyFile);
+                if (!File.Exists(src)) return;
+                string disabledDir = Path.Combine(root, "Plug-ins-disabled");
+                Directory.CreateDirectory(disabledDir);
+                string dst = Path.Combine(disabledDir, legacyFile);
+                if (File.Exists(dst)) File.Delete(dst);
+                File.Move(src, dst);
+            }
+            catch { }
         }
 
         private static void CopyManual(string temp, string root, string lang, string fileName, List<string> relative)
@@ -286,8 +317,6 @@ namespace MosSuite
             sb.AppendLine("  \"suiteVersion\": \"" + SuiteVersion + "\",");
             sb.AppendLine("  \"namesLanguage\": \"" + Json(o.NamesLanguage) + "\",");
             sb.AppendLine("  \"paramsLanguage\": \"" + Json(o.ParamsLanguage) + "\",");
-            // The resolved pair is what the Rust helper uses: it has no locale API, so
-            // "system" must already be turned into "zh"/"en" here.
             sb.AppendLine("  \"namesResolved\": \"" + Json(L10n.ResolveNames(o.NamesLanguage)) + "\",");
             sb.AppendLine("  \"paramsResolved\": \"" + Json(L10n.ResolveParams(o.ParamsLanguage)) + "\",");
             sb.AppendLine("  \"effectsLanguage\": \"" + Json(L10n.ResolveNames(o.NamesLanguage)) + "\",");
@@ -317,15 +346,23 @@ namespace MosSuite
             report.Root = root;
             try
             {
-                progress(0.1f, L10n.T("progress.config"));
-                KillHelper();
+                progress(0.10f, L10n.T("progress.config"));
+                KillHelpers();
                 InstallState state = Detect(root);
                 List<string> files = new List<string>(state.Files);
                 string[] known = {
-                    "Plug-ins\\mos_shadow.wasm", "Plug-ins\\mos_shake.wasm", "Plug-ins\\mos_shrink.wasm",
+                    "Plug-ins\\mos_shadow.wasm",
+                    "Plug-ins\\mos_shake.wasm",
+                    "Plug-ins\\mos_shrink.wasm",
                     "Plug-ins\\ae_warp.wasm",
                     "Plug-ins\\mos_blur.wasm",
-                    "helpers\\" + HelperExe, "Scripts\\Startup\\" + StartupScript,
+                    "Plug-ins\\mos_ripple.wasm",
+                    "Plug-ins\\mos_rain.wasm",
+                    "Plug-ins\\mos_lens.wasm",
+                    "helpers\\effectcraft-helper-mos-lightmix.exe",
+                    "helpers\\effectcraft-helper-mos-rain.exe",
+                    "helpers\\effectcraft-helper-mos-lens.exe",
+                    "Scripts\\Startup\\" + StartupScript,
                     Path.Combine(RecordDir, "manual", "zh", "安装说明.md"),
                     Path.Combine(RecordDir, "manual", "en", "Install-Guide.md")
                 };
@@ -337,7 +374,7 @@ namespace MosSuite
                 int i = 0;
                 foreach (string rel in files)
                 {
-                    progress(0.2f + 0.6f * (i / (float)Math.Max(1, files.Count)), L10n.F("progress.copy", Path.GetFileName(rel)));
+                    progress(0.18f + 0.68f * (i / (float)Math.Max(1, files.Count)), L10n.F("progress.remove", Path.GetFileName(rel)));
                     string full = Path.Combine(root, rel);
                     try
                     {
@@ -348,17 +385,9 @@ namespace MosSuite
                 }
 
                 string record = Path.Combine(root, RecordDir);
-                try
-                {
-                    if (Directory.Exists(record)) Directory.Delete(record, true);
-                }
-                catch { }
+                try { if (Directory.Exists(record)) Directory.Delete(record, true); } catch { }
                 string cfg = Path.Combine(root, ConfigName);
-                try
-                {
-                    if (File.Exists(cfg)) File.Delete(cfg);
-                }
-                catch { }
+                try { if (File.Exists(cfg)) File.Delete(cfg); } catch { }
 
                 progress(1f, L10n.T("progress.done"));
                 report.Ok = true;
@@ -381,8 +410,6 @@ namespace MosSuite
             string cfg = Path.Combine(root, ConfigName);
             if (!File.Exists(cfg))
             {
-                // No suite record: components may still be present (manual install),
-                // which Has() reports per file; the suite itself is not installed.
                 return state;
             }
             state.Installed = true;
@@ -394,7 +421,6 @@ namespace MosSuite
             if (parameters == "zh" || parameters == "en" || parameters == "system") state.ParamsLanguage = parameters;
             if (names.Length == 0 && parameters.Length == 0)
             {
-                // Records written by suite 1.0.0 only had one effectsLanguage.
                 string legacy = Match(text, "effectsLanguage");
                 if (legacy == "en") state.NamesLanguage = "en";
                 if (legacy == "en" || legacy == "zh") state.ParamsLanguage = legacy;
@@ -419,18 +445,21 @@ namespace MosSuite
 
         // ---------------- helpers ----------------
 
-        public static void KillHelper()
+        public static void KillHelpers()
         {
-            Process[] list = Process.GetProcessesByName("effectcraft-helper-mos-lightmix");
-            foreach (Process p in list)
+            for (int i = 0; i < AllHelperProcessNames.Length; i++)
             {
-                try
+                Process[] list = Process.GetProcessesByName(AllHelperProcessNames[i]);
+                foreach (Process p in list)
                 {
-                    p.Kill();
-                    p.WaitForExit(2000);
+                    try
+                    {
+                        p.Kill();
+                        p.WaitForExit(2000);
+                    }
+                    catch { }
+                    finally { p.Dispose(); }
                 }
-                catch { }
-                finally { p.Dispose(); }
             }
         }
 
