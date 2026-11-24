@@ -312,9 +312,10 @@ namespace MosSuite
             int pad = Theme.Dp(28);
             int y = (footer.Height - Theme.Dp(40)) / 2;
 
-            backButton.Visible = false;
-            secondaryButton.Visible = false;
-            primaryButton.Visible = true;
+            bool showBack = false;
+            bool showSecondary = false;
+            bool showPrimary = true;
+
             primaryButton.Enabled = true;
             primaryButton.ShowArrow = false;
             primaryButton.Font = Theme.LabelLarge;
@@ -327,21 +328,21 @@ namespace MosSuite
                 primaryButton.ShowArrow = true;
                 if (state.Installed)
                 {
-                    secondaryButton.Visible = true;
+                    showSecondary = true;
                     secondaryButton.Style = M3ButtonStyle.Text;
                     secondaryButton.Text = L10n.T("btn.uninstall");
                 }
             }
             else if (step == 1)
             {
-                backButton.Visible = true;
+                showBack = true;
                 backButton.Text = L10n.T("btn.back");
                 primaryButton.Text = L10n.T("btn.next");
                 primaryButton.ShowArrow = true;
             }
             else if (step == 2)
             {
-                backButton.Visible = true;
+                showBack = true;
                 backButton.Text = L10n.T("btn.back");
                 primaryButton.Text = L10n.T("btn.next");
                 primaryButton.ShowArrow = true;
@@ -349,7 +350,7 @@ namespace MosSuite
             }
             else if (step == 3)
             {
-                backButton.Visible = true;
+                showBack = true;
                 backButton.Text = L10n.T("btn.back");
                 primaryButton.Text = state.Installed ? L10n.T("btn.apply") : L10n.T("btn.install");
                 primaryButton.Enabled = SelectedCount() > 0;
@@ -358,27 +359,31 @@ namespace MosSuite
             {
                 if (outcome == InstallOutcome.Working)
                 {
-                    primaryButton.Visible = false;
+                    showPrimary = false;
                 }
                 else if (outcome == InstallOutcome.Done)
                 {
-                    secondaryButton.Visible = !lastWasUninstall;
+                    showSecondary = !lastWasUninstall;
                     secondaryButton.Style = M3ButtonStyle.Tonal;
                     secondaryButton.Text = L10n.T("btn.open");
                     primaryButton.Text = L10n.T("btn.close");
                 }
                 else
                 {
-                    backButton.Visible = true;
+                    showBack = true;
                     backButton.Text = L10n.T("btn.back");
                     primaryButton.Text = L10n.T("btn.retry");
                 }
             }
 
+            backButton.Visible = showBack;
+            secondaryButton.Visible = showSecondary;
+            primaryButton.Visible = showPrimary;
+
             primaryButton.FitWidth();
             primaryButton.Location = new Point(footer.Width - pad - primaryButton.Width, y);
 
-            if (secondaryButton.Visible)
+            if (showSecondary)
             {
                 secondaryButton.FitWidth();
                 if (step == 0)
@@ -391,7 +396,7 @@ namespace MosSuite
                 }
             }
 
-            if (backButton.Visible)
+            if (showBack)
             {
                 backButton.FitWidth();
                 backButton.Location = new Point(pad, y);
@@ -488,19 +493,20 @@ namespace MosSuite
             Widgets.Place(body, pad, Theme.Dp(48), innerW, Theme.Dp(46));
             p.Controls.Add(body);
 
-            // Overview card with 4 effect groups
+            // Overview card with 5 effect groups
             M3Card card = new M3Card();
             card.FillColor = Theme.SurfaceContainer;
-            Widgets.Place(card, pad, Theme.Dp(112), innerW, Theme.Dp(212));
+            Widgets.Place(card, pad, Theme.Dp(106), innerW, Theme.Dp(224));
             p.Controls.Add(card);
 
             string[] groups = {
                 L10n.T("welcome.group.deform"),
                 L10n.T("welcome.group.liquid"),
                 L10n.T("welcome.group.vfx"),
+                L10n.T("welcome.group.effects"),
                 L10n.T("welcome.group.blur")
             };
-            Color[] dots = { Theme.Primary, Theme.Tertiary, Theme.Secondary, Theme.Primary };
+            Color[] dots = { Theme.Primary, Theme.Tertiary, Theme.Secondary, Theme.Tertiary, Theme.Primary };
 
             card.Paint += delegate(object s, PaintEventArgs e)
             {
@@ -509,19 +515,19 @@ namespace MosSuite
                 g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
                 for (int i = 0; i < groups.Length; i++)
                 {
-                    int rowY = Theme.Dp(18) + i * Theme.Dp(46);
-                    RectangleF dot = new RectangleF(Theme.Dp(20), rowY + Theme.Dp(11), Theme.Dp(8), Theme.Dp(8));
+                    int rowY = Theme.Dp(14) + i * Theme.Dp(40);
+                    RectangleF dot = new RectangleF(Theme.Dp(20), rowY + Theme.Dp(10), Theme.Dp(8), Theme.Dp(8));
                     Theme.FillRound(g, dots[i], dot, Theme.Dpf(4f));
 
-                    Rectangle tr = new Rectangle(Theme.Dp(40), rowY, innerW - Theme.Dp(60), Theme.Dp(30));
-                    TextRenderer.DrawText(g, groups[i], Theme.BodyLarge, tr, Theme.OnSurface,
+                    Rectangle tr = new Rectangle(Theme.Dp(40), rowY, innerW - Theme.Dp(60), Theme.Dp(28));
+                    TextRenderer.DrawText(g, groups[i], Theme.BodyMedium, tr, Theme.OnSurface,
                         TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
 
                     if (i < groups.Length - 1)
                     {
                         using (Pen pen = new Pen(Theme.OutlineVariant, Theme.Dpf(1f)))
                         {
-                            g.DrawLine(pen, Theme.Dp(40), rowY + Theme.Dp(38), innerW - Theme.Dp(20), rowY + Theme.Dp(38));
+                            g.DrawLine(pen, Theme.Dp(40), rowY + Theme.Dp(34), innerW - Theme.Dp(20), rowY + Theme.Dp(34));
                         }
                     }
                 }
@@ -674,10 +680,10 @@ namespace MosSuite
 
             string resolvedNames = L10n.ResolveNames(namesLanguage);
             int gapX = Theme.Dp(12);
-            int gapY = Theme.Dp(10);
+            int gapY = Theme.Dp(8);
             int cardW = (innerW - gapX) / 2;
-            int cardH = Theme.Dp(58);
-            int startY = Theme.Dp(86);
+            int cardH = Theme.Dp(52);
+            int startY = Theme.Dp(80);
 
             for (int i = 0; i < components.Count; i++)
             {
@@ -812,7 +818,7 @@ namespace MosSuite
             M3Card sumCard = new M3Card();
             sumCard.FillColor = Theme.SurfaceLow;
             sumCard.BorderColor = Theme.OutlineVariant;
-            Widgets.Place(sumCard, pad, Theme.Dp(242), innerW, Theme.Dp(158));
+            Widgets.Place(sumCard, pad, Theme.Dp(242), innerW, Theme.Dp(172));
             p.Controls.Add(sumCard);
 
             M3Text sumTitle = Widgets.Label(L10n.T("loc.summary"), Theme.TitleSmall, Theme.Primary, Theme.SurfaceLow);
@@ -834,13 +840,13 @@ namespace MosSuite
             Widgets.Place(sumCount, Theme.Dp(18), Theme.Dp(74), innerW - Theme.Dp(36), Theme.Dp(24));
             sumCard.Controls.Add(sumCount);
 
-            // Selected effect chips summary (wrapped so all 8 names remain visible)
+            // Selected effect chips summary (wrapped so all 11 names remain visible)
             string resolvedNames = L10n.ResolveNames(namesLanguage);
             List<string> names = new List<string>();
             for (int i = 0; i < components.Count; i++) if (components[i].Selected) names.Add(components[i].Name(resolvedNames));
             M3Text sumList = Widgets.Label(string.Join(" · ", names.ToArray()), Theme.BodySmall, Theme.OnSurfaceVariant, Theme.SurfaceLow);
             sumList.Wrapped = true;
-            Widgets.Place(sumList, Theme.Dp(18), Theme.Dp(104), innerW - Theme.Dp(36), Theme.Dp(40));
+            Widgets.Place(sumList, Theme.Dp(18), Theme.Dp(104), innerW - Theme.Dp(36), Theme.Dp(56));
             sumCard.Controls.Add(sumList);
         }
 

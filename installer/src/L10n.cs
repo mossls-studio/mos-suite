@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 MOSSLS
 
-// L10n.cs — bilingual strings (zh / en) for the MOS Suite 1.4.0 step-by-step M3 wizard.
+// L10n.cs — bilingual strings (zh / en) for the MOS Suite 1.5.0 step-by-step M3 wizard.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -29,10 +29,11 @@ namespace MosSuite
 
             // Step 1: Welcome
             { "welcome.title", "欢迎使用 MOS 效果套件" },
-            { "welcome.body", "包含 8 款专为 EffectCraft 打造的开源效果插件，涵盖形变、液态光学、视效与模糊四大分组。接下来只需 3 步即可完成配置。" },
+            { "welcome.body", "包含 11 款专为 EffectCraft 打造的开源效果插件，涵盖形变、液态光学、视效、效果与模糊五大分组。接下来只需 3 步即可完成配置。" },
             { "welcome.group.deform", "MOS 形变 · 抖动、收缩（变形·白点）" },
             { "welcome.group.liquid", "MOS 液态 · 涟漪、雨滴、透镜（支持自定义图层）" },
-            { "welcome.group.vfx", "MOS 视效 · 阴影、灯光混合" },
+            { "welcome.group.vfx", "MOS 视效 · 阴影、灯光混合、打光" },
+            { "welcome.group.effects", "MOS 效果 · 扫光、消散" },
             { "welcome.group.blur", "MOS 模糊 · 高斯与羽化模糊" },
             { "welcome.installed", "检测到已安装 v{0}（名称：{1} · 参数：{2}）" },
             { "welcome.fresh", "尚未安装 · 默认安装到当前用户的 EffectCraft 目录" },
@@ -77,13 +78,13 @@ namespace MosSuite
             { "work.uninstalling", "正在卸载 MOS 套件" },
             { "done.title", "安装完成" },
             { "done.body", "已成功安装 {0} 个效果。请重启 EffectCraft 以加载全部插件。" },
-            { "done.helperTip", "提示：如需在当前窗口立即加载外部助手（雨滴、透镜、灯光混合），可执行「效果 ▸ 扫描效果辅助程序…」，并确认设置中已允许脚本读写文件。" },
+            { "done.helperTip", "提示：如需在当前窗口立即加载外部助手（雨滴、透镜、灯光混合、打光、扫光、消散），可执行「效果 ▸ 扫描效果辅助程序…」，并确认设置中已允许脚本读写文件。" },
             { "err.title", "安装未完成" },
             { "err.helperRunning", "请先完全退出 EffectCraft（以及正在运行的 effectcraft-helper-mos-* 进程），然后点击重试。" },
 
             // Uninstall dialog & completion
             { "unin.title", "卸载 MOS 套件？" },
-            { "unin.body", "将移除 MOS 套件的全部 8 个效果、自动加载脚本与语言配置文件，不会影响其他插件和工程。" },
+            { "unin.body", "将移除 MOS 套件的全部 11 个效果、自动加载脚本与语言配置文件，不会影响其他插件和工程。" },
             { "unin.done", "已卸载完成" },
             { "unin.doneBody", "已从目录中清理 MOS 套件的全部插件与配置文件。" },
             { "unin.failed", "卸载未完成" },
@@ -133,10 +134,11 @@ namespace MosSuite
 
             // Step 1: Welcome
             { "welcome.title", "Welcome to MOS Effects Suite" },
-            { "welcome.body", "Eight open-source effects built for EffectCraft across Deform, Liquid, VFX and Blur. Configure everything in 3 quick steps." },
+            { "welcome.body", "Eleven open-source effects built for EffectCraft across Deform, Liquid, VFX, Effects and Blur. Configure everything in 3 quick steps." },
             { "welcome.group.deform", "MOS Deform · Shake, Warp (Shrink)" },
             { "welcome.group.liquid", "MOS Liquid · Ripple, Rain, Lens (custom layer maps)" },
-            { "welcome.group.vfx", "MOS VFX · Shadow, Light Mix" },
+            { "welcome.group.vfx", "MOS VFX · Shadow, Light Mix, Rim Light" },
+            { "welcome.group.effects", "MOS Effects · Light Sweep, Dissolve" },
             { "welcome.group.blur", "MOS Blur · Gaussian & edge-feathered blur" },
             { "welcome.installed", "Installed v{0} detected (names: {1} · params: {2})" },
             { "welcome.fresh", "Not installed yet · Defaults to your EffectCraft user folder" },
@@ -181,13 +183,13 @@ namespace MosSuite
             { "work.uninstalling", "Uninstalling MOS Suite" },
             { "done.title", "Installation complete" },
             { "done.body", "Successfully installed {0} effect(s). Restart EffectCraft to load everything." },
-            { "done.helperTip", "Tip: To load external helpers (Rain, Lens, Light Mix) immediately in an open window, run Effects ▸ Scan Effect Helpers… and ensure script file access is enabled in Settings." },
+            { "done.helperTip", "Tip: To load external helpers (Rain, Lens, Light Mix, Rim Light, Light Sweep, Dissolve) immediately in an open window, run Effects ▸ Scan Effect Helpers… and ensure script file access is enabled in Settings." },
             { "err.title", "Installation did not finish" },
             { "err.helperRunning", "Quit EffectCraft completely (and end any running effectcraft-helper-mos-* processes), then press Retry." },
 
             // Uninstall dialog & completion
             { "unin.title", "Uninstall MOS Suite?" },
-            { "unin.body", "Removes all 8 MOS effects, the helper startup script and language settings. Other plug-ins and projects are untouched." },
+            { "unin.body", "Removes all 11 MOS effects, the helper startup script and language settings. Other plug-ins and projects are untouched." },
             { "unin.done", "Uninstall complete" },
             { "unin.doneBody", "All MOS Suite files and settings have been removed from the target folder." },
             { "unin.failed", "Uninstall did not finish" },
@@ -264,14 +266,17 @@ namespace MosSuite
             bool en = lang == "en";
             switch (id)
             {
-                case "shadow":   return en ? "mos_shadow" : "mos_阴影";
-                case "shake":    return en ? "mos_shake" : "mos_抖动";
-                case "shrink":   return "mos_收缩";
-                case "blur":     return en ? "mos_blur" : "mos_模糊";
-                case "lightmix": return en ? "mos_lightmix" : "mos_灯光混合";
-                case "ripple":   return en ? "mos_ripple" : "mos_涟漪";
-                case "rain":     return en ? "mos_rain" : "mos_雨滴";
-                case "lens":     return en ? "mos_lens" : "mos_透镜";
+                case "shadow":     return en ? "mos_shadow" : "mos_阴影";
+                case "shake":      return en ? "mos_shake" : "mos_抖动";
+                case "shrink":     return "mos_收缩";
+                case "blur":       return en ? "mos_blur" : "mos_模糊";
+                case "lightmix":   return en ? "mos_lightmix" : "mos_灯光混合";
+                case "rimlight":   return en ? "mos_rimlight" : "mos_打光";
+                case "lightsweep": return en ? "mos_lightsweep" : "mos_扫光";
+                case "dissolve":   return en ? "mos_dissolve" : "mos_消散";
+                case "ripple":     return en ? "mos_ripple" : "mos_涟漪";
+                case "rain":       return en ? "mos_rain" : "mos_雨滴";
+                case "lens":       return en ? "mos_lens" : "mos_透镜";
             }
             return id;
         }
@@ -279,9 +284,10 @@ namespace MosSuite
         public static string GroupName(string group, string lang)
         {
             bool en = lang == "en";
-            if (group == "deform") return en ? "MOS Deform" : "MOS 形变";
-            if (group == "liquid") return en ? "MOS Liquid" : "MOS 液态";
-            if (group == "blur")   return en ? "MOS Blur" : "MOS 模糊";
+            if (group == "deform")  return en ? "MOS Deform" : "MOS 形变";
+            if (group == "liquid")  return en ? "MOS Liquid" : "MOS 液态";
+            if (group == "effects") return en ? "MOS Effects" : "MOS 效果";
+            if (group == "blur")    return en ? "MOS Blur" : "MOS 模糊";
             return en ? "MOS VFX" : "MOS 视效";
         }
     }

@@ -3,7 +3,7 @@
 # containing both the graphical .exe installer, the manual-install edition, and bilingual docs.
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "1.4.0"
+    [string]$Version = "1.5.0"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,14 +20,17 @@ function Fail($message) {
     exit 1
 }
 
-$shadow   = Join-Path $mos 'vfx\mos_阴影'
-$shake    = Join-Path $mos '形变\mos_shake'
-$warp     = Join-Path $mos '形变\mos_变形白点'
-$blur     = Join-Path $mos '模糊\mos_模糊'
-$ripple   = Join-Path $mos '形变\mos_液态\mos_涟漪'
-$lightmix = Join-Path $mos 'vfx\mos_灯光混合'
-$rain     = Join-Path $mos '形变\mos_液态\mos_雨滴'
-$lens     = Join-Path $mos '形变\mos_液态\mos_透镜'
+$shadow     = Join-Path $mos 'vfx\mos_阴影'
+$shake      = Join-Path $mos '形变\mos_shake'
+$warp       = Join-Path $mos '形变\mos_变形白点'
+$blur       = Join-Path $mos '模糊\mos_模糊'
+$ripple     = Join-Path $mos '形变\mos_液态\mos_涟漪'
+$lightmix   = Join-Path $mos 'vfx\mos_灯光混合'
+$rimlight   = Join-Path $mos 'vfx\mos_打光'
+$lightsweep = Join-Path $mos 'vfx\mos_扫光'
+$dissolve   = Join-Path $mos 'vfx\mos_消散'
+$rain       = Join-Path $mos '形变\mos_液态\mos_雨滴'
+$lens       = Join-Path $mos '形变\mos_液态\mos_透镜'
 
 $variants = @('zh-zh', 'zh-en', 'en-zh', 'en-en')
 $wasmEffects = @(
@@ -39,9 +42,12 @@ $wasmEffects = @(
 )
 
 $helpers = @(
-    @{ Src = (Join-Path $lightmix 'dist\effectcraft-helper-mos-lightmix.exe'); File = 'effectcraft-helper-mos-lightmix.exe' },
-    @{ Src = (Join-Path $rain     'dist\effectcraft-helper-mos-rain.exe');     File = 'effectcraft-helper-mos-rain.exe' },
-    @{ Src = (Join-Path $lens     'dist\effectcraft-helper-mos-lens.exe');     File = 'effectcraft-helper-mos-lens.exe' }
+    @{ Src = (Join-Path $lightmix   'dist\effectcraft-helper-mos-lightmix.exe');   File = 'effectcraft-helper-mos-lightmix.exe' },
+    @{ Src = (Join-Path $rimlight   'dist\effectcraft-helper-mos-rimlight.exe');   File = 'effectcraft-helper-mos-rimlight.exe' },
+    @{ Src = (Join-Path $lightsweep 'dist\effectcraft-helper-mos-lightsweep.exe'); File = 'effectcraft-helper-mos-lightsweep.exe' },
+    @{ Src = (Join-Path $dissolve   'dist\effectcraft-helper-mos-dissolve.exe');   File = 'effectcraft-helper-mos-dissolve.exe' },
+    @{ Src = (Join-Path $rain       'dist\effectcraft-helper-mos-rain.exe');       File = 'effectcraft-helper-mos-rain.exe' },
+    @{ Src = (Join-Path $lens       'dist\effectcraft-helper-mos-lens.exe');       File = 'effectcraft-helper-mos-lens.exe' }
 )
 
 foreach ($v in $variants) {
@@ -213,10 +219,11 @@ $topReadme = @"
    - 本项目为个人开源插件，未购买商业代码签名证书，部分杀毒软件或 Windows SmartScreen 可能对 ``.exe`` 安装程序产生误报。
    - **如不信任 ``.exe``，请直接打开 ``manual\`` 文件夹**，参照 ``docs\zh\安装说明.md`` 将文件手动复制到 ``%APPDATA%\EffectCraft\`` 即可。
 
-### 包含的 8 款效果
+### 包含的 11 款效果
 - **MOS 形变**：``mos_抖动``、``mos_收缩（变形·白点）``
 - **MOS 液态**：``mos_涟漪``、``mos_雨滴``、``mos_透镜``
-- **MOS 视效**：``mos_阴影``、``mos_灯光混合``
+- **MOS 视效**：``mos_阴影``、``mos_灯光混合``、``mos_打光``
+- **MOS 效果**：``mos_扫光``、``mos_消散``
 - **MOS 模糊**：``mos_模糊``
 
 详细安装步骤与排错请查看：``docs\zh\安装说明.md``
@@ -232,10 +239,11 @@ This archive includes **two installation options** — use whichever you prefer:
    - Because this is an independent open-source project without a paid commercial code-signing certificate, Windows SmartScreen or antivirus tools may flag the ``.exe`` installer as a false positive.
    - **If you prefer not to run the ``.exe``**, simply use the files inside ``manual\`` and follow ``docs\en\Install-Guide.md`` to copy them into ``%APPDATA%\EffectCraft\``.
 
-### Included 8 Effects
+### Included 11 Effects
 - **MOS Deform**: ``mos_shake``, ``mos_收缩 (Warp)``
 - **MOS Liquid**: ``mos_ripple``, ``mos_rain``, ``mos_lens``
-- **MOS VFX**: ``mos_shadow``, ``mos_lightmix``
+- **MOS VFX**: ``mos_shadow``, ``mos_lightmix``, ``mos_rimlight``
+- **MOS Effects**: ``mos_lightsweep``, ``mos_dissolve``
 - **MOS Blur**: ``mos_blur``
 
 Full installation & troubleshooting guide: ``docs\en\Install-Guide.md``

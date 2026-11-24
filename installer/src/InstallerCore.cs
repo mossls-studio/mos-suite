@@ -70,7 +70,7 @@ namespace MosSuite
 
     internal static class InstallerCore
     {
-        public const string SuiteVersion = "1.4.0";
+        public const string SuiteVersion = "1.5.0";
         public const string ConfigName = "mos-suite.json";
         public const string RecordDir = "mos-suite";
         public const string StartupScript = "mos-load-helpers.jsx";
@@ -78,7 +78,10 @@ namespace MosSuite
         public static readonly string[] AllHelperProcessNames = {
             "effectcraft-helper-mos-lightmix",
             "effectcraft-helper-mos-rain",
-            "effectcraft-helper-mos-lens"
+            "effectcraft-helper-mos-lens",
+            "effectcraft-helper-mos-rimlight",
+            "effectcraft-helper-mos-lightsweep",
+            "effectcraft-helper-mos-dissolve"
         };
 
         public static string DefaultRoot()
@@ -89,14 +92,17 @@ namespace MosSuite
         public static List<ComponentInfo> Components()
         {
             List<ComponentInfo> list = new List<ComponentInfo>();
-            list.Add(new ComponentInfo { Id = "shake",    Wasm = "mos_shake.wasm",  HelperExe = "",                                    LegacyWasm = "",              Version = "1.2.0", Group = "deform" });
-            list.Add(new ComponentInfo { Id = "shrink",   Wasm = "ae_warp.wasm",    HelperExe = "",                                    LegacyWasm = "mos_shrink.wasm", Version = "1.3.0", Group = "deform" });
-            list.Add(new ComponentInfo { Id = "ripple",   Wasm = "mos_ripple.wasm", HelperExe = "",                                    LegacyWasm = "",              Version = "1.1.0", Group = "liquid" });
-            list.Add(new ComponentInfo { Id = "rain",     Wasm = "",                HelperExe = "effectcraft-helper-mos-rain.exe",     LegacyWasm = "mos_rain.wasm", Version = "5.0.0", Group = "liquid" });
-            list.Add(new ComponentInfo { Id = "lens",     Wasm = "",                HelperExe = "effectcraft-helper-mos-lens.exe",     LegacyWasm = "mos_lens.wasm", Version = "2.0.0", Group = "liquid" });
-            list.Add(new ComponentInfo { Id = "shadow",   Wasm = "mos_shadow.wasm", HelperExe = "",                                    LegacyWasm = "",              Version = "0.6.2", Group = "vfx" });
-            list.Add(new ComponentInfo { Id = "lightmix", Wasm = "",                HelperExe = "effectcraft-helper-mos-lightmix.exe", LegacyWasm = "",              Version = "1.5.0", Group = "vfx" });
-            list.Add(new ComponentInfo { Id = "blur",     Wasm = "mos_blur.wasm",   HelperExe = "",                                    LegacyWasm = "",              Version = "0.1.0", Group = "blur" });
+            list.Add(new ComponentInfo { Id = "shake",      Wasm = "mos_shake.wasm",  HelperExe = "",                                      LegacyWasm = "",                Version = "1.2.0", Group = "deform" });
+            list.Add(new ComponentInfo { Id = "shrink",     Wasm = "ae_warp.wasm",    HelperExe = "",                                      LegacyWasm = "mos_shrink.wasm", Version = "1.3.0", Group = "deform" });
+            list.Add(new ComponentInfo { Id = "ripple",     Wasm = "mos_ripple.wasm", HelperExe = "",                                      LegacyWasm = "",                Version = "1.1.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "rain",       Wasm = "",                HelperExe = "effectcraft-helper-mos-rain.exe",       LegacyWasm = "mos_rain.wasm",   Version = "5.0.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "lens",       Wasm = "",                HelperExe = "effectcraft-helper-mos-lens.exe",       LegacyWasm = "mos_lens.wasm",   Version = "2.0.0", Group = "liquid" });
+            list.Add(new ComponentInfo { Id = "shadow",     Wasm = "mos_shadow.wasm", HelperExe = "",                                      LegacyWasm = "",                Version = "0.6.2", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "lightmix",   Wasm = "",                HelperExe = "effectcraft-helper-mos-lightmix.exe",   LegacyWasm = "",                Version = "1.5.0", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "rimlight",   Wasm = "",                HelperExe = "effectcraft-helper-mos-rimlight.exe",   LegacyWasm = "",                Version = "1.0.0", Group = "vfx" });
+            list.Add(new ComponentInfo { Id = "lightsweep", Wasm = "",                HelperExe = "effectcraft-helper-mos-lightsweep.exe", LegacyWasm = "",                Version = "1.2.0", Group = "effects" });
+            list.Add(new ComponentInfo { Id = "dissolve",   Wasm = "",                HelperExe = "effectcraft-helper-mos-dissolve.exe",   LegacyWasm = "",                Version = "1.0.0", Group = "effects" });
+            list.Add(new ComponentInfo { Id = "blur",       Wasm = "mos_blur.wasm",   HelperExe = "",                                      LegacyWasm = "",                Version = "0.1.0", Group = "blur" });
             return list;
         }
 
@@ -362,6 +368,9 @@ namespace MosSuite
                     "helpers\\effectcraft-helper-mos-lightmix.exe",
                     "helpers\\effectcraft-helper-mos-rain.exe",
                     "helpers\\effectcraft-helper-mos-lens.exe",
+                    "helpers\\effectcraft-helper-mos-rimlight.exe",
+                    "helpers\\effectcraft-helper-mos-lightsweep.exe",
+                    "helpers\\effectcraft-helper-mos-dissolve.exe",
                     "Scripts\\Startup\\" + StartupScript,
                     Path.Combine(RecordDir, "manual", "zh", "安装说明.md"),
                     Path.Combine(RecordDir, "manual", "en", "Install-Guide.md")

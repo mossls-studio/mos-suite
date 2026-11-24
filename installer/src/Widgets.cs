@@ -870,15 +870,16 @@ namespace MosSuite
                 rightEdge -= bw + Theme.Dp(6);
             }
 
-            // Title + meta
+            // Title + meta (vertically centered for compact & standard card heights)
             int textX = Theme.Dp(46);
             int textW = Math.Max(Theme.Dp(40), rightEdge - textX);
-            Rectangle titleRect = new Rectangle(textX, Theme.Dp(9), textW, Theme.Dp(20));
+            int topY = Math.Max(Theme.Dp(6), (Height - Theme.Dp(37)) / 2);
+            Rectangle titleRect = new Rectangle(textX, topY, textW, Theme.Dp(20));
             TextRenderer.DrawText(g, Title, Theme.TitleSmall, titleRect, Theme.OnSurface,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
 
             string sub = string.IsNullOrEmpty(StatusTag) ? Meta : (Meta + " · " + StatusTag);
-            Rectangle metaRect = new Rectangle(textX, Theme.Dp(30), textW, Theme.Dp(16));
+            Rectangle metaRect = new Rectangle(textX, topY + Theme.Dp(21), textW, Theme.Dp(16));
             TextRenderer.DrawText(g, sub, Theme.BodySmall, metaRect, Theme.OnSurfaceVariant,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
         }

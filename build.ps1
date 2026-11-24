@@ -1,4 +1,4 @@
-﻿# build.ps1 — build all eight effects, the M3 installer, and the unified release ZIP.
+﻿# build.ps1 — build all eleven effects, the M3 installer, and the unified release ZIP.
 param(
     [switch]$SkipWasm,
     [switch]$SkipHelper
@@ -8,14 +8,17 @@ $ErrorActionPreference = 'Stop'
 $suite = $PSScriptRoot
 $mos = Split-Path -Parent $suite
 
-$shake    = Join-Path $mos '形变\mos_shake'
-$warp     = Join-Path $mos '形变\mos_变形白点'
-$shadow   = Join-Path $mos 'vfx\mos_阴影'
-$blur     = Join-Path $mos '模糊\mos_模糊'
-$ripple   = Join-Path $mos '形变\mos_液态\mos_涟漪'
-$lightmix = Join-Path $mos 'vfx\mos_灯光混合'
-$rain     = Join-Path $mos '形变\mos_液态\mos_雨滴'
-$lens     = Join-Path $mos '形变\mos_液态\mos_透镜'
+$shake      = Join-Path $mos '形变\mos_shake'
+$warp       = Join-Path $mos '形变\mos_变形白点'
+$shadow     = Join-Path $mos 'vfx\mos_阴影'
+$blur       = Join-Path $mos '模糊\mos_模糊'
+$ripple     = Join-Path $mos '形变\mos_液态\mos_涟漪'
+$lightmix   = Join-Path $mos 'vfx\mos_灯光混合'
+$rimlight   = Join-Path $mos 'vfx\mos_打光'
+$lightsweep = Join-Path $mos 'vfx\mos_扫光'
+$dissolve   = Join-Path $mos 'vfx\mos_消散'
+$rain       = Join-Path $mos '形变\mos_液态\mos_雨滴'
+$lens       = Join-Path $mos '形变\mos_液态\mos_透镜'
 
 function Require($path, $what) {
     if (-not (Test-Path $path)) { throw "$what not found: $path" }
@@ -48,9 +51,12 @@ if (-not $SkipHelper) {
     if (-not $cargo) { throw 'cargo not found; install the Rust toolchain or pass -SkipHelper' }
 
     $helperDefs = @(
-        @{ Name = 'Light Mix'; Root = $lightmix; Exe = 'effectcraft-helper-mos-lightmix.exe'; Target = 'mos-lightmix-target' },
-        @{ Name = 'Rain';      Root = $rain;     Exe = 'effectcraft-helper-mos-rain.exe';     Target = 'mos-rain-target' },
-        @{ Name = 'Lens';      Root = $lens;     Exe = 'effectcraft-helper-mos-lens.exe';     Target = 'mos-lens-target' }
+        @{ Name = 'Light Mix';   Root = $lightmix;   Exe = 'effectcraft-helper-mos-lightmix.exe';   Target = 'mos-lightmix-target' },
+        @{ Name = 'Rim Light';   Root = $rimlight;   Exe = 'effectcraft-helper-mos-rimlight.exe';   Target = 'mos-rimlight-target' },
+        @{ Name = 'Light Sweep'; Root = $lightsweep; Exe = 'effectcraft-helper-mos-lightsweep.exe'; Target = 'mos-lightsweep-target' },
+        @{ Name = 'Dissolve';    Root = $dissolve;   Exe = 'effectcraft-helper-mos-dissolve.exe';   Target = 'mos-dissolve-target' },
+        @{ Name = 'Rain';        Root = $rain;       Exe = 'effectcraft-helper-mos-rain.exe';       Target = 'mos-rain-target' },
+        @{ Name = 'Lens';        Root = $lens;       Exe = 'effectcraft-helper-mos-lens.exe';       Target = 'mos-lens-target' }
     )
     foreach ($h in $helperDefs) {
         Write-Host "building the $($h.Name) helper..."
