@@ -11,10 +11,10 @@ EffectCraft 的 **11 个效果**，合并成一个套件（v1.5.0），在效果
 | MOS 液态 / MOS Liquid | 透镜 Lens | `mos.lens` | 外部助手 Helper | 2.0.0 | <https://github.com/mossls-studio/mos-lens> |
 | MOS 视效 / MOS VFX | 阴影 Shadow | `mos.shadow` | WASM | 0.6.2 | <https://github.com/mossls-studio/mos-shadow> |
 | MOS 视效 / MOS VFX | 灯光混合 Light Mix | `mos.lightwrap` | 外部助手 Helper | 1.5.0 | <https://github.com/mossls-studio/mos-lightmix> |
-| MOS 视效 / MOS VFX | 打光 Rim Light | `mos.rimlight` | 外部助手 Helper | 1.0.0 | 本地仓库 `vfx/mos_打光` |
-| MOS 效果 / MOS Effects | 扫光 Light Sweep | `mos.lightsweep` | 外部助手 Helper | 1.2.0 | 本地仓库 `vfx/mos_扫光` |
-| MOS 效果 / MOS Effects | 消散 Dissolve | `mos.dissolve` | 外部助手 Helper | 1.0.0 | 本地仓库 `vfx/mos_消散` |
-| MOS 模糊 / MOS Blur | 模糊 Blur | `mos.blur` | WASM | 0.1.0 | 本地仓库 `模糊/mos_模糊` |
+| MOS 视效 / MOS VFX | 打光 Rim Light | `mos.rimlight` | 外部助手 Helper | 1.0.0 | <https://github.com/mossls-studio/mos-rimlight> |
+| MOS 效果 / MOS Effects | 扫光 Light Sweep | `mos.lightsweep` | 外部助手 Helper | 1.2.0 | <https://github.com/mossls-studio/mos-lightsweep> |
+| MOS 效果 / MOS Effects | 消散 Dissolve | `mos.dissolve` | 外部助手 Helper | 1.0.0 | <https://github.com/mossls-studio/mos-dissolve> |
+| MOS 模糊 / MOS Blur | 模糊 Blur | `mos.blur` | WASM | 0.1.0 | <https://github.com/mossls-studio/mos-blur> |
 
 开源地址（AGPL-3.0-or-later，各自独立仓库，安装器、合集发布包与双语说明在套件仓库）：
 
@@ -28,10 +28,10 @@ EffectCraft 的 **11 个效果**，合并成一个套件（v1.5.0），在效果
 | <https://github.com/mossls-studio/mos-shake> | 抖动 `mos.shake`（WASM，API 1） |
 | <https://github.com/mossls-studio/mos-shrink> | 变形·白点 `mos.ae.warp`（WASM，API 1，源码 `ae_warp/`） |
 | <https://github.com/mossls-studio/mos-lightmix> | 灯光混合 `mos.lightwrap`（Rust 外部助手，含 `helper/src/*.rs`） |
-| 打光 `mos.rimlight` | 本地仓库 `vfx/mos_打光`（Rust 外部助手，2D 偏移边缘打光 + 拼贴 + 渐变叠加 + 独立发光） |
-| 扫光 `mos.lightsweep` | 本地仓库 `vfx/mos_扫光`（Rust 外部助手，直线/径向扫光 + 独立轮廓高光 + 高速发光） |
-| 消散 `mos.dissolve` | 本地仓库 `vfx/mos_消散`（Rust 外部助手，粒子生成/像素分离 + 线性/杂色/自定义遮罩 + 风场湍流） |
-| 模糊 `mos.blur` | 本地仓库 `模糊/mos_模糊`（Rust → WASM） |
+| <https://github.com/mossls-studio/mos-rimlight> | 打光 `mos.rimlight`（Rust 外部助手，2D 偏移边缘打光 + 拼贴 + 渐变叠加 + 独立发光） |
+| <https://github.com/mossls-studio/mos-lightsweep> | 扫光 `mos.lightsweep`（Rust 外部助手，直线/径向扫光 + 独立轮廓高光 + 高速发光） |
+| <https://github.com/mossls-studio/mos-dissolve> | 消散 `mos.dissolve`（Rust 外部助手，粒子生成/像素分离 + 线性/杂色/自定义遮罩 + 风场湍流） |
+| <https://github.com/mossls-studio/mos-blur> | 模糊 `mos.blur`（Rust → WASM，支持图层矢量蒙版路径与真实边缘模糊） |
 
 5 个 WASM 插件各带 4 份语言构建（名称语言 × 参数语言：`zh-zh`、`zh-en`、`en-zh`、`en-en`），其中变形·白点只有中文清单；6 个外部助手（雨滴、透镜、灯光混合、打光、扫光、消散）为原生可执行文件，运行时读取 `mos-suite.json` 中的设置分别本地化分组/效果名与参数控件语言。
 
@@ -115,7 +115,7 @@ AGPL-3.0-or-later（GNU Affero 通用公共许可证第 3 版或更高版本）�
 
 # MOS Suite (English)
 
-Eleven EffectCraft effects bundled into one suite (`v1.5.0`) across five Effects-panel groups (see tables above). Seven effects are open-source under **AGPL-3.0-or-later** in their own repositories ([mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-ripple](https://github.com/mossls-studio/mos-ripple), [mos-rain](https://github.com/mossls-studio/mos-rain), [mos-lens](https://github.com/mossls-studio/mos-lens), [mos-shadow](https://github.com/mossls-studio/mos-shadow), and [mos-lightmix](https://github.com/mossls-studio/mos-lightmix)), while installer sources, unified release bundles, and bilingual manuals live in [mos-suite](https://github.com/mossls-studio/mos-suite).
+Eleven EffectCraft effects bundled into one suite (`v1.5.0`) across five Effects-panel groups (see tables above). All eleven effects are open-source under **AGPL-3.0-or-later** in their own repositories ([mos-shake](https://github.com/mossls-studio/mos-shake), [mos-shrink](https://github.com/mossls-studio/mos-shrink), [mos-ripple](https://github.com/mossls-studio/mos-ripple), [mos-rain](https://github.com/mossls-studio/mos-rain), [mos-lens](https://github.com/mossls-studio/mos-lens), [mos-shadow](https://github.com/mossls-studio/mos-shadow), [mos-lightmix](https://github.com/mossls-studio/mos-lightmix), [mos-rimlight](https://github.com/mossls-studio/mos-rimlight), [mos-lightsweep](https://github.com/mossls-studio/mos-lightsweep), [mos-dissolve](https://github.com/mossls-studio/mos-dissolve), and [mos-blur](https://github.com/mossls-studio/mos-blur)), while installer sources, unified release bundles, and bilingual manuals live in [mos-suite](https://github.com/mossls-studio/mos-suite).
 
 The five WASM plug-ins ship in four `names × parameters` combinations (`zh-zh`, `zh-en`, `en-zh`, `en-en`; Warp ships a single Chinese manifest). The six native External Effect Helpers (`mos_rain`, `mos_lens`, `mos_lightmix`, `mos_rimlight`, `mos_lightsweep`, `mos_dissolve`) read `namesResolved` / `paramsResolved` from `%APPDATA%\EffectCraft\mos-suite.json` (`schema: 2`) to localize effect names and parameter controls independently.
 
