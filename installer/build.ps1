@@ -255,3 +255,47 @@ if (Test-Path $releaseZip) { Remove-Item $releaseZip -Force }
 [System.IO.Compression.ZipFile]::CreateFromDirectory($bundleStage, $releaseZip, [System.IO.Compression.CompressionLevel]::Optimal, $true)
 $zipInfo = Get-Item $releaseZip
 Write-Host ("packaged {0} ({1:N0} bytes)" -f $zipInfo.Name, $zipInfo.Length) -ForegroundColor Green
+
+# ---------------- Standalone Manual-Only Release ZIP (No Installer .exe) ----------------
+
+Write-Host 'packaging standalone manual-only archive (no installer .exe)...'
+$manualStage = Join-Path $stage "MOS-Suite-Manual-$version"
+New-Item -ItemType Directory -Force -Path $manualStage | Out-Null
+Copy-Item $bundleManual (Join-Path $manualStage 'manual') -Recurse -Force
+Copy-Item (Join-Path $bundleStage 'docs') (Join-Path $manualStage 'docs') -Recurse -Force
+if (Test-Path $license) { Copy-Item $license (Join-Path $manualStage 'LICENSE') -Force }
+
+$manualOnlyReadme = @"
+# MOS Suite v$version — 手动安装版 / Manual Install Edition
+
+本压缩包为**纯手动安装版**（不包含任何 ``.exe`` 安装程序），直接按需复制文件到 ``%APPDATA%\EffectCraft\`` 即可。
+
+## 快速安装步骤（中文）
+1. 先完全退出 EffectCraft。
+2. 从 ``manual\plug-ins\<语言组合>\``（``zh-zh`` / ``zh-en`` / ``en-zh`` / ``en-en``）复制 5 个 ``.wasm`` 到 ``%APPDATA%\EffectCraft\Plug-ins\``。
+3. 复制 ``manual\helpers\effectcraft-helper-mos-*.exe``（6 个外部助手）到 ``%APPDATA%\EffectCraft\helpers\``。
+4. 复制 ``manual\Scripts\Startup\mos-load-helpers.jsx`` 到 ``%APPDATA%\EffectCraft\Scripts\Startup\``。
+5. 将 ``manual\mos-suite.zh.json``（或 ``mos-suite.en.json``）复制到 ``%APPDATA%\EffectCraft\mos-suite.json``。
+6. 打开 EffectCraft → **设置 ▸ Scripting & Expressions**，勾选 **Allow Scripts to Write Files and Access Network** 后重启。
+
+详细说明见：``docs\zh\安装说明.md``
+
+---
+
+## Quick Install (English)
+1. Quit EffectCraft completely.
+2. Copy the 5 ``.wasm`` files from ``manual\plug-ins\<pair>\`` (``zh-zh`` / ``zh-en`` / ``en-zh`` / ``en-en``) to ``%APPDATA%\EffectCraft\Plug-ins\``.
+3. Copy the 6 external helpers from ``manual\helpers\`` to ``%APPDATA%\EffectCraft\helpers\``.
+4. Copy ``manual\Scripts\Startup\mos-load-helpers.jsx`` to ``%APPDATA%\EffectCraft\Scripts\Startup\``.
+5. Copy ``manual\mos-suite.en.json`` (or ``mos-suite.zh.json``) to ``%APPDATA%\EffectCraft\mos-suite.json``.
+6. In EffectCraft **Settings ▸ Scripting & Expressions**, enable **Allow Scripts to Write Files and Access Network**, then restart EffectCraft.
+
+Full guide: ``docs\en\Install-Guide.md``
+"@
+[System.IO.File]::WriteAllText((Join-Path $manualStage 'README_请先阅读.md'), $manualOnlyReadme, (New-Object System.Text.UTF8Encoding($false)))
+
+$manualZip = Join-Path $release "MOS-Suite-Manual-$version.zip"
+if (Test-Path $manualZip) { Remove-Item $manualZip -Force }
+[System.IO.Compression.ZipFile]::CreateFromDirectory($manualStage, $manualZip, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+$manualZipInfo = Get-Item $manualZip
+Write-Host ("packaged {0} ({1:N0} bytes)" -f $manualZipInfo.Name, $manualZipInfo.Length) -ForegroundColor Green
